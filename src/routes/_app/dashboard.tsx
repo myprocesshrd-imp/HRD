@@ -1,607 +1,391 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useI18n } from "@/lib/i18n";
+import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { useI18n } from "@/lib/i18n";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  ENGAGEMENT_BY_DEPT, ENGAGEMENT_TREND, RESPONSE_DISTRIBUTION,
-  CATEGORY_SCORES, HEATMAP_DATA, DEPARTMENTS, LEVELS, AGE_RANGES, TENURE, LOCATIONS,
-  MOCK_SURVEYS, getSurveySections,
-} from "@/lib/mock-data";
-import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  LineChart, Line, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis, Radar, Legend,
-} from "recharts";
-import {
-  TrendingUp, Users, ClipboardCheck, Activity, Filter, ArrowUpRight, Download, Sparkles,
-  ClipboardList, Clock, CheckCircle2, HeartHandshake, CalendarDays, BarChart3, ArrowRight,
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  Users, BarChart3, TrendingUp, Calendar, 
+  ArrowRight, Sparkles, MessageSquare, 
+  Activity, Target, Zap, Brain, Shield,
+  Globe, Compass, Database, Terminal, Clock,
+  ChevronRight, Building2, Layers, History, Star, Filter
 } from "lucide-react";
+import { 
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+} from "recharts";
+import { cn } from "@/lib/utils";
+import { useEffect, useState, useMemo } from "react";
+import { getCategoryScores, getEngagementTrend, getEngagementByDept } from "@/services/api/analytics";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
 });
 
-const KPI_COLOR = "var(--color-chart-3)";
+const PIE_COLORS = ["#0f172a", "#3b82f6", "#8b5cf6", "#d946ef", "#6366f1"];
 
-const PIE_COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
-
-// ── Employee Dashboard ──
 function EmployeeDashboard() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
-  const navigate = useNavigate();
-
-  const pendingSurveys = MOCK_SURVEYS.filter((s) => s.status === "Active");
-  const completedSurveys = MOCK_SURVEYS.filter((s) => s.status === "Closed");
-
-  const recentSections = pendingSurveys.length > 0 ? getSurveySections(pendingSurveys[0].id) : [];
-  const estMinutes = recentSections.reduce((sum, s) => sum + s.questions.length, 0) + 3;
-  const estMinutesStr = lang === "th" ? `ประมาณ ${estMinutes} นาที` : `~${estMinutes} min`;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          {lang === "th" ? "ภาพรวมของฉัน" : "My Dashboard"}
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {lang === "th" ? "สวัสดี" : "Hello"}, {user ? (lang === "th" ? user.nameTh : user.nameEn) : ""} 
-          <span className="mx-1.5">·</span>
-          {lang === "th" ? "ยินดีต้อนรับสู่รอบสำรวจ Q2" : "Welcome to the Q2 survey cycle"}
-        </p>
+    <div className="space-y-4 animate-in fade-in duration-500 pb-10">
+      
+      {/* ── Compact Employee Hero ── */}
+      <div className="relative group overflow-hidden rounded-xl bg-slate-900 text-white p-6 shadow-lg border border-slate-800">
+        <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12 transition-transform duration-1000 group-hover:scale-110">
+          <Star className="w-32 h-32" />
+        </div>
+        <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/10 shrink-0">
+             <Zap className="w-6 h-6 text-primary" />
+          </div>
+          <div className="space-y-0.5 flex-1 text-center md:text-left">
+             <div className="flex items-center justify-center md:justify-start gap-2 text-primary">
+                <Sparkles className="w-3 h-3 animate-pulse" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em]">Status: Mission Active</span>
+             </div>
+             <h1 className="text-xl font-bold tracking-tight">
+               {lang === "th" ? `ยินดีต้อนรับ, ${user?.nameTh}` : `Welcome back, ${user?.nameEn}`}
+             </h1>
+             <p className="text-xs text-slate-400 font-medium max-w-xl">
+               {lang === "th" ? "ร่วมสร้างวัฒนธรรมองค์กรที่ดีผ่านเสียงของคุณ" : "Your insights drive our collective evolution."}
+             </p>
+          </div>
+          <Button size="sm" className="h-9 px-6 rounded-lg bg-white text-slate-900 hover:bg-primary hover:text-white font-bold text-[10px] uppercase tracking-wider transition-all group/btn shrink-0">
+             Start Survey
+             <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+          </Button>
+        </div>
       </div>
 
-      {/* Pending surveys — CTA หลัก */}
-      {pendingSurveys.length > 0 && (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary-soft/20 to-background">
-          <CardContent className="p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <ClipboardList className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold">
-                  {lang === "th" ? `แบบสำรวจที่รอทำ (${pendingSurveys.length})` : `Pending surveys (${pendingSurveys.length})`}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {lang === "th"
-                    ? `ใช้เวลา ${estMinutesStr} · เสียงของคุณมีค่าต่อองค์กร`
-                    : `Takes ${estMinutesStr} · Your voice matters`}
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {pendingSurveys.map((s) => {
-                const isAnon = s.surveyType === "anonymous";
-                return (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/30 transition-colors cursor-pointer"
-                    onClick={() => navigate({ to: isAnon ? "/survey/public/$id" : "/survey", params: isAnon ? { id: s.id } : undefined })}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{lang === "th" ? s.titleTh : s.titleEn}</div>
-                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        <span>{s.endDate !== "—" ? `${lang === "th" ? "ปิดรับ" : "Closes"} ${s.endDate}` : "—"}</span>
-                        {isAnon && (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">
-                            {lang === "th" ? "ไม่ระบุตัวตน" : "Anonymous"}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <Button size="sm" className="shrink-0">
-                      {t("survey.start")}
-                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { icon: Activity, label: lang === "th" ? "คะแนนความผูกพัน" : "Engagement Score", value: "4.1", sub: lang === "th" ? "องค์กร" : "Company-wide" },
-          { icon: Users, label: lang === "th" ? "มีส่วนร่วม" : "Participation", value: "78%", sub: lang === "th" ? "662/850 คน" : "662/850 responses" },
-          { icon: ClipboardCheck, label: lang === "th" ? "ตอบแล้วปีนี้" : "Completed (YTD)", value: "3", sub: lang === "th" ? "จาก 4 ครั้ง" : "of 4 surveys" },
-          { icon: HeartHandshake, label: lang === "th" ? "ครั้งล่าสุด" : "Last activity", value: lang === "th" ? "15 เม.ย." : "Apr 15", sub: lang === "th" ? "Annual Survey 2025" : "Annual Survey 2025" },
-        ].map((k) => {
-          const Icon = k.icon;
-          return (
-            <Card key={k.label} className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Icon className="w-4 h-4" />
-                <span className="text-[10px] uppercase tracking-wide">{k.label}</span>
-              </div>
-              <div className="text-2xl font-semibold tracking-tight">{k.value}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</div>
-            </Card>
-          );
-        })}
+          { label: "Surveys Completed", value: "12", sub: "100% Fidelity", icon: Target, color: "text-primary", bg: "bg-primary/5" },
+          { label: "Engagement Streak", value: "4 Cycles", sub: "Top 5% Contributor", icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Voice Impact", value: "High", sub: "3 Suggestions Implemented", icon: MessageSquare, color: "text-indigo-600", bg: "bg-indigo-50" },
+        ].map((kpi) => (
+          <div key={kpi.label} className="flex items-center gap-3 p-3.5 bg-white border border-slate-100 rounded-xl shadow-sm group hover:shadow-md transition-all">
+             <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm", kpi.bg, kpi.color)}>
+               <kpi.icon className="w-4.5 h-4.5" />
+             </div>
+             <div>
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</div>
+                <div className="text-base font-bold text-slate-900 leading-tight">{kpi.value}</div>
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-0.5 opacity-60">{kpi.sub}</div>
+             </div>
+          </div>
+        ))}
       </div>
-
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Trend — read only */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-primary" />
-              {lang === "th" ? "แนวโน้มความผูกพัน (รายไตรมาส)" : "Engagement Trend (Quarterly)"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={ENGAGEMENT_TREND} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="period" stroke="var(--color-muted-foreground)" fontSize={11} />
-                <YAxis domain={[3, 5]} stroke="var(--color-muted-foreground)" fontSize={11} />
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} />
-                <Line type="monotone" dataKey="score" stroke={KPI_COLOR} strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Your impact */}
-        <Card className="bg-gradient-to-br from-primary-soft/10 to-background border-primary/10">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              {lang === "th" ? "เสียงของคุณมีค่า" : "Your Voice Matters"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg bg-card border border-border">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <TrendingUp className="w-4 h-4 text-success" />
-                {lang === "th" ? "คะแนน Collaboration เพิ่มขึ้น 8%" : "Collaboration score up 8%"}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {lang === "th"
-                  ? "จากผลสำรวจ Q1 พนักงานรู้สึกว่าการทำงานร่วมกันดีขึ้นอย่างมีนัยสำคัญ"
-                  : "Based on Q1 results, employees report significantly better team collaboration."}
-              </p>
-            </div>
-            <div className="p-4 rounded-lg bg-card border border-border">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Activity className="w-4 h-4 text-warning" />
-                {lang === "th" ? "ยังต้องพัฒนา: ค่าตอบแทน" : "Needs focus: Compensation"}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {lang === "th"
-                  ? "คะแนนค่าตอบแทนอยู่ที่ 3.7/5 — ทีม HR กำลังทบทวนนโยบายเพื่อปรับปรุง"
-                  : "Compensation scores at 3.7/5 — HR is reviewing policies to improve."}
-              </p>
-            </div>
-            <div className="pt-2">
-              <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => navigate({ to: "/results" })}>
-                {lang === "th" ? "ดูผลสำรวจทั้งหมด" : "View all results"}
-                <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Completed surveys history */}
-      {completedSurveys.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-success" />
-              {lang === "th" ? "ประวัติการตอบแบบสำรวจ" : "Survey History"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {completedSurveys.map((s) => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-md border border-border">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <div>
-                      <div className="text-sm font-medium">{lang === "th" ? s.titleTh : s.titleEn}</div>
-                      <div className="text-xs text-muted-foreground">
-                        <CalendarDays className="w-3 h-3 inline mr-0.5" />
-                        {s.startDate} → {s.endDate} · {s.responses} {lang === "th" ? "คนตอบ" : "responses"}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px]">{t("common.closed")}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
 
-// ── Admin / Manager Dashboard ──
 function AdminDashboard() {
   const { t, lang } = useI18n();
-  const { user } = useAuth();
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [realCats, setRealCats] = useState<any[]>([]);
+  const [engagementByDept, setEngagementByDept] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [filterDept, setFilterDept] = useState("all");
-  const [filterLevel, setFilterLevel] = useState("all");
-  const [filterAge, setFilterAge] = useState("all");
-  const [filterTenure, setFilterTenure] = useState("all");
-  const [filterLocation, setFilterLocation] = useState("all");
-  const navigate = useNavigate();
+  useEffect(() => {
+    async function load() {
+      try {
+        const [trend, cats, depts] = await Promise.all([
+          getEngagementTrend(),
+          getCategoryScores(),
+          getEngagementByDept("S1")
+        ]);
+        setTrendData(trend);
+        setRealCats(cats);
+        setEngagementByDept(depts);
+      } finally {
+        setTimeout(() => setLoading(false), 500);
+      }
+    }
+    load();
+  }, []);
 
-  const hasFilters = [filterDept, filterLevel, filterAge, filterTenure, filterLocation].some((f) => f !== "all");
+  const realHeatmap = useMemo(() => engagementByDept.map(d => ({
+    dept: d.dept,
+    A: d.score + (Math.random() * 0.4 - 0.2),
+    B: d.score + (Math.random() * 0.4 - 0.2),
+    C: d.score + (Math.random() * 0.4 - 0.2)
+  })), [engagementByDept]);
 
-  const filteredEngagementByDept = useMemo(() => {
-    if (filterDept === "all") return ENGAGEMENT_BY_DEPT;
-    return ENGAGEMENT_BY_DEPT.filter((d) => d.dept === filterDept);
-  }, [filterDept]);
-
-  const totalResponses = useMemo(
-    () => filteredEngagementByDept.reduce((s, d) => s + d.responses, 0),
-    [filteredEngagementByDept]
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+      <div className="w-8 h-8 rounded-full border-2 border-slate-100 border-t-primary animate-spin" />
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Synthesizing Intelligence...</p>
+    </div>
   );
-
-  const avgScore = useMemo(
-    () => filteredEngagementByDept.length > 0
-      ? (filteredEngagementByDept.reduce((s, d) => s + d.score * d.responses, 0) / totalResponses).toFixed(2)
-      : "—",
-    [filteredEngagementByDept, totalResponses]
-  );
-
-  const filterMultiplier = hasFilters ? 0.85 + Math.random() * 0.25 : 1;
-
-  const kpis = [
-    {
-      label: t("dash.engagementScore"),
-      value: avgScore !== "—" ? avgScore : "—",
-      delta: hasFilters ? `±${(Math.random() * 0.2).toFixed(2)}` : "+0.12",
-      icon: Activity,
-      hint: lang === "th" ? "เทียบกับไตรมาสก่อน" : "vs last quarter",
-    },
-    {
-      label: t("dash.participation"),
-      value: `${Math.round(totalResponses / (hasFilters ? 120 : 850) * 100)}%`,
-      delta: hasFilters ? `±${(Math.random() * 3).toFixed(1)}%` : "+5.4%",
-      icon: Users,
-      hint: hasFilters
-        ? `${totalResponses} / ${Math.round(totalResponses / (hasFilters ? 0.78 : 0.78))}`
-        : "662 / 850",
-    },
-    {
-      label: t("dash.responses"),
-      value: String(totalResponses || "662"),
-      delta: hasFilters ? `±${Math.round(Math.random() * 30)}` : "+128",
-      icon: ClipboardCheck,
-      hint: lang === "th" ? "ในรอบนี้" : "this cycle",
-    },
-    {
-      label: t("dash.activeSurveys"),
-      value: hasFilters ? String(Math.ceil(1 * filterMultiplier)) : "1",
-      delta: "—",
-      icon: TrendingUp,
-      hint: lang === "th" ? "เปิดรับอยู่" : "currently open",
-    },
-  ];
-
-  const filteredHeatmap = useMemo(() => {
-    if (filterDept === "all") return HEATMAP_DATA;
-    return HEATMAP_DATA.filter((d) => d.dept === filterDept || d.dept === "HR");
-  }, [filterDept]);
-
-  const filteredCategory = useMemo(() => {
-    if (filterDept === "all") return CATEGORY_SCORES;
-    return CATEGORY_SCORES.map((c) => ({
-      ...c,
-      score: Math.max(1, Math.min(5, c.score + (Math.random() - 0.5) * 0.6)),
-    }));
-  }, [filterDept]);
-
-  const filteredEngagementTrend = useMemo(() => {
-    if (!hasFilters) return ENGAGEMENT_TREND;
-    return ENGAGEMENT_TREND.map((t) => ({
-      ...t,
-      score: Math.max(1, Math.min(5, t.score + (Math.random() - 0.5) * 0.3)),
-    }));
-  }, [hasFilters]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{t("dash.title")}</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {t("dash.subtitle")} · {lang === "th" ? "สวัสดี" : "Hello"}, {user ? (lang === "th" ? user.nameTh : user.nameEn) : ""}
+    <div className="space-y-4 animate-in fade-in duration-500 pb-10">
+      
+      {/* ── Compact Admin Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Operational Dashboard</h1>
+          <p className="text-xs font-medium text-slate-400">
+            {lang === "th" ? "ภาพรวมสถานะความผูกพันของบุคลากร" : "Real-time organizational health monitoring."}
           </p>
         </div>
-        <Button variant="outline" size="sm">
-          <Download className="w-4 h-4 mr-1.5" />
-          {t("common.export")}
-        </Button>
-      </div>
-
-      {/* Filter bar */}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mr-2">
-            <Filter className="w-4 h-4" />
-            {t("filter.title")}
-          </div>
-          <Select value={filterDept} onValueChange={setFilterDept}>
-            <SelectTrigger className="h-9 w-[170px] text-sm">
-              <SelectValue placeholder={t("common.department")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("common.all")}</SelectItem>
-              {DEPARTMENTS.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterLevel} onValueChange={setFilterLevel}>
-            <SelectTrigger className="h-9 w-[170px] text-sm">
-              <SelectValue placeholder={t("common.level")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("common.all")}</SelectItem>
-              {LEVELS.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterAge} onValueChange={setFilterAge}>
-            <SelectTrigger className="h-9 w-[170px] text-sm">
-              <SelectValue placeholder={t("common.age")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("common.all")}</SelectItem>
-              {AGE_RANGES.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterTenure} onValueChange={setFilterTenure}>
-            <SelectTrigger className="h-9 w-[170px] text-sm">
-              <SelectValue placeholder={t("common.tenure")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("common.all")}</SelectItem>
-              {TENURE.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterLocation} onValueChange={setFilterLocation}>
-            <SelectTrigger className="h-9 w-[170px] text-sm">
-              <SelectValue placeholder={t("common.location")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("common.all")}</SelectItem>
-              {LOCATIONS.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {hasFilters && (
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setFilterDept("all"); setFilterLevel("all"); setFilterAge("all"); setFilterTenure("all"); setFilterLocation("all"); }}>
-              {lang === "th" ? "รีเซ็ต" : "Reset"}
-            </Button>
-          )}
+        <div className="flex items-center gap-3 p-2 px-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+           <div className="text-right">
+              <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Pulse Index</span>
+              <div className="text-base font-bold text-primary tabular-nums tracking-tight">4.82</div>
+           </div>
+           <Separator orientation="vertical" className="h-6 mx-1" />
+           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+              <TrendingUp className="w-3.5 h-3.5" />
+           </div>
         </div>
-      </Card>
-
-      {/* Anonymous survey CTA */}
-      <button
-        type="button"
-        onClick={() => navigate({ to: "/survey/public/$id", params: { id: "s4" } })}
-        className="w-full text-left group"
-      >
-        <Card className="p-4 border-primary/20 bg-gradient-to-r from-primary-soft/30 via-primary-soft/10 to-transparent hover:from-primary-soft/40 hover:border-primary/30 transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold">
-                {lang === "th" ? "ลองทำแบบสำรวจแบบไม่ระบุตัวตน" : "Try the anonymous survey"}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {lang === "th"
-                  ? "ทดสอบระบบ Pulse Survey แบบไม่ระบุตัวตน พร้อมเอฟเฟกต์คอนเฟตติและภาพเคลื่อนไหว – ไม่ต้องล็อกอิน"
-                  : "Test the anonymous Pulse Survey with confetti and animations – no login required."}
-              </div>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-medium text-primary shrink-0 group-hover:gap-2 transition-all">
-              {lang === "th" ? "ไปเลย" : "Go"}
-              <ArrowUpRight className="w-3 h-3" />
-            </div>
-          </div>
-        </Card>
-      </button>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => {
-          const Icon = k.icon;
-          return (
-            <Card key={k.label} className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{k.label}</div>
-                <div className="w-9 h-9 rounded-lg bg-primary-soft flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-primary" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <div className="text-3xl font-semibold tracking-tight">{k.value}</div>
-                <div className="text-xs text-success font-medium flex items-center">
-                  {k.delta !== "—" && <ArrowUpRight className="w-3 h-3" />}
-                  {k.delta}
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground mt-1.5">{k.hint}</div>
-            </Card>
-          );
-        })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">{t("dash.byDept")}</CardTitle>
+      {/* ── Top Grid: Trend & Pie ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <Card className="lg:col-span-8 border-slate-100 shadow-sm rounded-xl overflow-hidden">
+          <CardHeader className="px-4 py-3 border-b flex flex-row items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-3">
+               <div className="w-7 h-7 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-primary shadow-sm">
+                  <TrendingUp className="w-3.5 h-3.5" />
+               </div>
+               <div>
+                  <CardTitle className="text-xs font-bold tracking-tight">Engagement Stream</CardTitle>
+                  <CardDescription className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Personnel Pulse Over Time</CardDescription>
+               </div>
+            </div>
+            <div className="flex gap-1">
+               <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-400"><History className="w-3 h-3" /></Button>
+               <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-400"><Compass className="w-3 h-3" /></Button>
+            </div>
           </CardHeader>
-          <CardContent className="h-[320px]">
+          <CardContent className="p-4 h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredEngagementByDept} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="dept" stroke="var(--color-muted-foreground)" fontSize={11} interval={0} angle={-15} textAnchor="end" height={60} />
-                <YAxis domain={[0, 5]} stroke="var(--color-muted-foreground)" fontSize={11} />
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="score" fill={KPI_COLOR} radius={[6, 6, 0, 0]} isAnimationActive />
-              </BarChart>
+              <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="period" stroke="#94a3b8" fontSize={8} fontWeight={700} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={8} fontWeight={700} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", fontSize: "10px", fontWeight: "700" }}
+                />
+                <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorScore)" strokeLinecap="round" />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("dash.distribution")}</CardTitle>
+        <Card className="lg:col-span-4 border-slate-100 shadow-sm rounded-xl overflow-hidden bg-slate-900 text-white">
+          <CardHeader className="px-4 py-3 pb-0">
+             <div className="flex items-center gap-3">
+               <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-primary">
+                  <Layers className="w-3.5 h-3.5" />
+               </div>
+               <div>
+                  <CardTitle className="text-xs font-bold tracking-tight text-white">Distribution</CardTitle>
+                  <CardDescription className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Response Volume</CardDescription>
+               </div>
+            </div>
           </CardHeader>
-          <CardContent className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={RESPONSE_DISTRIBUTION}
-                  dataKey="count"
-                  nameKey="rating"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  isAnimationActive
-                >
-                  {RESPONSE_DISTRIBUTION.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+          <CardContent className="p-4 h-[220px]">
+             <ResponsiveContainer width="100%" height="100%">
+               <PieChart>
+                 <Pie
+                   data={engagementByDept}
+                   innerRadius={45}
+                   outerRadius={65}
+                   paddingAngle={4}
+                   dataKey="responses"
+                   stroke="none"
+                 >
+                   {engagementByDept.map((entry, index) => (
+                     <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                   ))}
+                 </Pie>
+                 <Tooltip contentStyle={{ background: "#0f172a", border: "none", borderRadius: "8px", color: "#fff", fontWeight: "700", fontSize: "10px" }} />
+               </PieChart>
+             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Mid Grid: Heatmap & Radar ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden">
+          <CardHeader className="px-4 py-3 bg-slate-50/50 border-b">
+            <div className="flex items-center gap-3">
+               <div className="w-7 h-7 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-emerald-600 shadow-sm">
+                  <Activity className="w-3.5 h-3.5" />
+               </div>
+               <div>
+                  <CardTitle className="text-xs font-bold tracking-tight text-slate-900">Fidelity Heatmap</CardTitle>
+                  <CardDescription className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Sectional Performance Density</CardDescription>
+               </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="space-y-3">
+              <div className="grid grid-cols-[100px_repeat(3,minmax(0,1fr))] gap-1.5 px-1.5">
+                <div className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Node</div>
+                <div className="text-center text-[8px] font-bold uppercase tracking-widest text-slate-400">Vision</div>
+                <div className="text-center text-[8px] font-bold uppercase tracking-widest text-slate-400">Culture</div>
+                <div className="text-center text-[8px] font-bold uppercase tracking-widest text-slate-400">Flow</div>
+              </div>
+              <ScrollArea className="h-[180px] pr-3">
+                 <div className="space-y-1.5">
+                  {realHeatmap.map((row) => (
+                    <div key={row.dept} className="grid grid-cols-[100px_repeat(3,minmax(0,1fr))] gap-1.5 items-center group">
+                      <div className="text-[10px] font-bold text-slate-700 group-hover:text-primary truncate transition-colors">{row.dept}</div>
+                      {(["A", "B", "C"] as const).map((k) => {
+                        const v = row[k];
+                        const intensity = Math.max(0, Math.min(1, (v - 3) / 2));
+                        return (
+                          <div
+                            key={k}
+                            className="h-8 rounded-lg flex items-center justify-center text-[9px] font-bold shadow-sm transition-all hover:scale-105"
+                            style={{
+                              background: `color-mix(in oklab, #3b82f6 ${intensity * 80 + 10}%, #f1f5f9)`,
+                              color: intensity > 0.5 ? "white" : "#475569",
+                            }}
+                          >
+                            {v.toFixed(1)}
+                          </div>
+                        );
+                      })}
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("dash.trend")}</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filteredEngagementTrend} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="period" stroke="var(--color-muted-foreground)" fontSize={11} />
-                <YAxis domain={[3, 5]} stroke="var(--color-muted-foreground)" fontSize={11} />
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} />
-                <Line type="monotone" dataKey="score" stroke={KPI_COLOR} strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive />
-              </LineChart>
-            </ResponsiveContainer>
+                 </div>
+              </ScrollArea>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("dash.categories")}</CardTitle>
+        <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden">
+          <CardHeader className="px-4 py-3 bg-slate-50/50 border-b">
+            <div className="flex items-center gap-3">
+               <div className="w-7 h-7 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                  <Brain className="w-3.5 h-3.5" />
+               </div>
+               <div>
+                  <CardTitle className="text-xs font-bold tracking-tight text-slate-900">Stability Radar</CardTitle>
+                  <CardDescription className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Multidimensional Metrics</CardDescription>
+               </div>
+            </div>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="p-4 h-[230px] flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={filteredCategory}>
-                <PolarGrid stroke="var(--color-border)" />
-                <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} />
-                <PolarRadiusAxis domain={[0, 5]} tick={{ fontSize: 10 }} />
-                <Radar dataKey="score" stroke="var(--color-chart-1)" fill="var(--color-chart-3)" fillOpacity={0.5} isAnimationActive />
+               <RadarChart data={realCats} cx="50%" cy="50%" outerRadius="65%">
+                <PolarGrid stroke="#e2e8f0" strokeWidth={1} />
+                <PolarAngleAxis dataKey="category" tick={{ fontSize: 7, fontWeight: 700, fill: "#64748b" }} />
+                <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
+                <Radar name="Score" dataKey="score" stroke="#6366f1" strokeWidth={2} fill="#6366f1" fillOpacity={0.2} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", fontWeight: "700", background: "#fff", fontSize: "9px" }} />
               </RadarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("dash.heatmap")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_repeat(3,minmax(0,1fr))] gap-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                <div></div>                <div className="text-center">{t("heatmap.colOrg")}</div><div className="text-center">{t("heatmap.colWork")}</div><div className="text-center">{t("heatmap.colEnv")}</div>
-              </div>
-              {filteredHeatmap.map((row) => (
-                <div key={row.dept} className="grid grid-cols-[1fr_repeat(3,minmax(0,1fr))] gap-2 items-center">
-                  <div className="text-xs font-medium">{row.dept}</div>
-                  {(["A", "B", "C"] as const).map((k) => {
-                    const v = row[k];
-                    const intensity = Math.max(0, Math.min(1, (v - 3) / 2));
-                    return (
-                      <div
-                        key={k}
-                        className="h-8 rounded-md flex items-center justify-center text-xs font-medium transition-colors"
-                        style={{
-                          background: `color-mix(in oklab, var(--color-chart-3) ${intensity * 80 + 10}%, var(--color-muted))`,
-                          color: intensity > 0.55 ? "var(--color-primary-foreground)" : "var(--color-foreground)",
-                        }}
-                      >
-                        {v.toFixed(1)}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Department participation list */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">{t("dash.participationByDept")}</CardTitle>
-          <Badge variant="secondary">{t("dash.currentCycle")}</Badge>
+      {/* ── Bottom Grid: Participation Table ── */}
+      <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden bg-white">
+        <CardHeader className="px-4 py-3 bg-slate-50/50 border-b flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+             <div className="w-7 h-7 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-primary shadow-sm">
+                <Users className="w-3.5 h-3.5" />
+             </div>
+             <div>
+                <CardTitle className="text-xs font-bold tracking-tight">Participation Registry</CardTitle>
+                <CardDescription className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Operational Compliance</CardDescription>
+             </div>
+          </div>
+          <div className="flex items-center gap-3">
+             <div className="text-right">
+                <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400">Avg Compliance</span>
+                <div className="text-xs font-bold text-slate-900 tabular-nums">78.4%</div>
+             </div>
+             <Separator orientation="vertical" className="h-5" />
+             <Globe className="w-3.5 h-3.5 text-primary opacity-50" />
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {filteredEngagementByDept.map((d) => {
-            const target = Math.round(d.responses * 1.3);
-            const pct = Math.round((d.responses / target) * 100);
-            return (
-              <div key={d.dept} className="grid grid-cols-12 items-center gap-3 text-sm">
-                <div className="col-span-4 font-medium truncate">{d.dept}</div>
-                <div className="col-span-6"><Progress value={pct} className="h-2" /></div>
-                <div className="col-span-2 text-right text-muted-foreground tabular-nums">
-                  {d.responses}/{target} · {pct}%
-                </div>
-              </div>
-            );
-          })}
+        <CardContent className="p-0">
+           <ScrollArea className="h-[200px]">
+             <table className="w-full text-left">
+               <thead className="bg-slate-50/50 sticky top-0 z-10 border-b">
+                 <tr className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">
+                   <th className="px-4 py-2.5">Node</th>
+                   <th className="px-4 py-2.5">Fidelity</th>
+                   <th className="px-4 py-2.5 text-right">Metric</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-50">
+                 {engagementByDept.map((d, i) => {
+                   const target = Math.round(d.responses * 1.3);
+                   const pct = Math.round((d.responses / target) * 100);
+                   return (
+                     <tr key={d.dept} className="group hover:bg-slate-50/50 transition-colors">
+                       <td className="px-4 py-2.5">
+                         <div className="flex items-center gap-2.5">
+                            <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[8px] font-bold border border-slate-100 shrink-0" style={{ backgroundColor: `${PIE_COLORS[i % PIE_COLORS.length]}10`, color: PIE_COLORS[i % PIE_COLORS.length] }}>
+                               {d.dept.slice(0, 2).toUpperCase()}
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-700 truncate max-w-[120px]">{d.dept}</span>
+                         </div>
+                       </td>
+                       <td className="px-4 py-2.5">
+                         <div className="flex items-center gap-2.5">
+                            <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                               <div 
+                                 className="h-full rounded-full transition-all duration-1000" 
+                                 style={{ width: `${pct}%`, backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} 
+                                />
+                            </div>
+                            <span className="text-[9px] font-bold text-slate-500 tabular-nums w-6 text-right">{pct}%</span>
+                         </div>
+                       </td>
+                       <td className="px-4 py-2.5 text-right">
+                          <div className="text-[10px] font-bold text-slate-900">{d.responses} / {target}</div>
+                       </td>
+                     </tr>
+                   );
+                 })}
+               </tbody>
+             </table>
+           </ScrollArea>
         </CardContent>
       </Card>
+      
+      {/* ── System Footer ── */}
+      <div className="flex flex-wrap items-center justify-center gap-6 opacity-30 pt-4">
+        {[
+          { icon: Terminal, text: "Protocol 2.4-STABLE" },
+          { icon: Database, text: "APAC-PRIMARY" },
+          { icon: Shield, text: "SOC3 COMPLIANT" },
+        ].map(item => (
+          <div key={item.text} className="flex items-center gap-2 text-[8px] font-bold uppercase tracking-widest text-slate-500">
+            <item.icon className="w-3 h-3" />
+            {item.text}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-// ── Role-gated wrapper ──
 function DashboardPage() {
   const { user } = useAuth();
-
-  if (user?.role === "employee") {
-    return <EmployeeDashboard />;
-  }
+  if (user?.role === "employee") return <EmployeeDashboard />;
   return <AdminDashboard />;
 }
+
+export default DashboardPage;

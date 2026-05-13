@@ -1,17 +1,25 @@
-// Mock auth: persists session in localStorage. Replace with real JWT later.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { MOCK_USERS, type MockUser, type Role } from "./mock-data";
+import { idmsLogin } from "@/services/idms.service";
 
 interface AuthCtx {
   user: MockUser | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<MockUser>;
+  login: (employeeCode: string, password: string) => Promise<MockUser>;
   logout: () => void;
   hasRole: (...r: Role[]) => boolean;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
 const STORAGE_KEY = "hrpulse.session";
+
+function mockLogin(employeeCode: string, password: string): MockUser {
+  const found = MOCK_USERS.find(
+    (u) => u.employeeCode.toLowerCase() === employeeCode.trim().toLowerCase() && u.password === password
+  );
+  if (!found) throw new Error("Invalid credentials");
+  return found;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MockUser | null>(null);
@@ -25,17 +33,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const found = MOCK_USERS.find(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
-    );
-    if (!found) throw new Error("Invalid credentials");
-    setUser(found);
-    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(found));
-    return found;
+  const login = async (employeeCode: string, password: string) => {
+    console.log("[Auth] Login attempt:", employeeCode);
+
+    // 1. Try IDMS → Supabase
+    const syncResult = await idmsLogin(employeeCode, password);
+    if (syncResult?.success) {
+      console.log("[Auth] IDMS login OK, role:", syncResult.role);
+      const matched: MockUser = {
+        id: syncResult.employeeCode,
+        employeeCode: syncResult.employeeCode,
+        email: syncResult.email,
+        password: "",
+        nameTh: syncResult.nameTh,
+        nameEn: syncResult.nameEn,
+        role: syncResult.role,
+        department: syncResult.department,
+        businessUnit: syncResult.businessUnit,
+        level: syncResult.level,
+        location: syncResult.location,
+        avatarUrl: syncResult.avatarUrl,
+      };
+      setUser(matched);
+      if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(matched));
+      return matched;
+    }
+
+    // 2. Fallback to mock users
+    console.log("[Auth] Falling back to mock auth...");
+    try {
+      const mockUser = mockLogin(employeeCode, password);
+      setUser(mockUser);
+      if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(mockUser));
+      return mockUser;
+    } catch (err) {
+      console.error("[Auth] Mock login failed:", err);
+      throw err;
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
   };

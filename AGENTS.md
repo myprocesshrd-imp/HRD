@@ -19,12 +19,12 @@ npx tsc --noEmit    # TypeScript check
 ```
 
 ## Mock Users
-| Email | Password | Role |
-|-------|----------|------|
-| admin@company.co.th | admin123 | super_admin |
-| hr@company.co.th | hr123 | hr_admin |
-| manager@company.co.th | manager123 | manager |
-| employee@company.co.th | employee123 | employee |
+| Employee Code | Password | Role |
+|---------------|----------|------|
+| admin | admin123 | super_admin |
+| hr | hr123 | hr_admin |
+| manager | manager123 | manager |
+| employee | employee123 | employee |
 
 ## Routes
 | Path | Component | Auth |

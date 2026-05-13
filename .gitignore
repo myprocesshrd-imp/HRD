@@ -30,3 +30,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Temporary files
+*.bak
+*.tmp
+*.temp
+supabase/.temp/
+
+# Build artifacts
+tsc_output.txt
+routeTree.gen.ts

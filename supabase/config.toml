@@ -4,7 +4,7 @@ port = 54321
 schemas = ["public", "storage"]
 
 [db]
-major_version = 15
+major_version = 17
 
 [auth]
 enabled = true
