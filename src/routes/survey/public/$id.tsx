@@ -140,7 +140,12 @@ function AnonymousSurveyPage() {
         if (typeof value === "number") numericValue = value;
         else if (Array.isArray(value)) arrayTextValue = value;
         else if (typeof value === "object" && value !== null) jsonbValue = value as Record<string, string>;
-        else textValue = String(value ?? "");
+        else {
+          textValue = String(value ?? "");
+          if (!isNaN(Number(textValue)) && textValue.trim() !== "") {
+            numericValue = Number(textValue);
+          }
+        }
         return { questionId, numericValue, textValue, arrayTextValue, jsonbValue };
       });
 

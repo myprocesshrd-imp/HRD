@@ -4,7 +4,8 @@ import { useI18n } from "@/lib/i18n";
 import { 
   getQuestionBank, createSection, updateSection, deleteSection, 
   createQuestion, updateQuestion, deleteQuestion, 
-  reorderQuestions, moveQuestion as moveQuestionApi 
+  reorderQuestions, moveQuestion as moveQuestionApi,
+  getBusinessUnits, type BusinessUnit
 } from "@/services/api";
 import type { SurveySection, Question, QuestionType } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -85,7 +86,7 @@ function formFromQuestion(q: Question): QuestionForm {
     category: q.category ?? "",
     minValue: q.minValue ?? 1, maxValue: q.maxValue ?? 5,
     choices: (q.choices ?? []).map((c, i) => ({ key: `c${i}${Date.now()}`, ...c })),
-    rows: (q.rows ?? []).map((r, i) => ({ key: `r${i}${Date.now()}`, textEn: r, textTh: q.rowsTh?.[i] ?? r })),
+    rows: (q.rows ?? []).map((r, i) => ({ key: `r${i}${Date.now()}`, ...r })),
     columns: (q.columns ?? []).map((c, i) => ({ key: `c${i}${Date.now()}`, ...c })),
   };
 }
@@ -120,56 +121,56 @@ function SortableQuestionRow({
         "group/row flex items-center gap-3 p-3 rounded-xl border transition-all duration-300",
         isDragging 
           ? "border-primary bg-primary/[0.02] shadow-xl ring-2 ring-primary/5 scale-[1.01]" 
-          : "border-slate-100 bg-white hover:border-primary/20 hover:shadow-md"
+          : "border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-primary/20 hover:shadow-md"
       )}
     >
       <div {...attributes} {...listeners}><DragHandle /></div>
       
-      <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-xs font-bold text-slate-400 group-hover/row:text-primary group-hover/row:border-primary/10 transition-all shrink-0">
+      <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 group-hover/row:text-primary group-hover/row:border-primary/10 transition-all shrink-0">
         {String(index + 1).padStart(2, '0')}
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2.5">
-          <span className="text-sm font-bold text-slate-900 truncate">
+        <div className="flex items-center gap-3">
+          <span className="text-[15px] font-bold text-slate-900 dark:text-white truncate">
             {lang === "th" ? question.textTh : question.textEn}
           </span>
           {question.required && (
-            <Badge className="bg-rose-50 text-rose-500 border-rose-100 h-4 px-2 font-bold text-[9px] uppercase tracking-widest shadow-none">REQUIRED</Badge>
+            <Badge className="bg-rose-50 dark:bg-rose-950/30 text-rose-500 dark:text-rose-400 border-rose-100 dark:border-rose-900/50 h-5 px-2.5 font-bold text-[10px] uppercase tracking-widest shadow-none">REQUIRED</Badge>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-1.5">
-           <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider", cfg.color)}>
-              <cfg.icon className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-2.5 mt-2">
+           <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider", cfg.color)}>
+              <cfg.icon className="w-4 h-4" />
               {lang === "th" ? cfg.labelTh : cfg.labelEn}
            </div>
-           {question.category && (
-             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-400 font-bold text-[9px] uppercase tracking-wider border border-slate-100">
-                <Box className="w-3 h-3" />
-                {question.category}
-             </div>
-           )}
+            {question.category && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-bold text-[10px] uppercase tracking-wider border border-slate-100 dark:border-slate-800">
+                 <Box className="w-3.5 h-3.5" />
+                 {question.category}
+              </div>
+            )}
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 transition-opacity">
+      <div className="flex items-center gap-2 ml-auto shrink-0 transition-opacity">
         {otherSections.length > 0 && (
           <Select value="" onValueChange={(v) => v && onMoveToSection(question, v)}>
-            <SelectTrigger className="h-8 w-8 p-0 border border-slate-200 hover:border-primary/20 hover:bg-slate-50 shadow-none justify-center rounded-lg transition-all">
-              <MoveRight className="w-3.5 h-3.5 text-slate-400" />
+            <SelectTrigger className="h-10 w-10 p-0 border border-slate-200 dark:border-slate-700 hover:border-primary/20 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-none justify-center rounded-xl transition-all">
+              <MoveRight className="w-4.5 h-4.5 text-slate-400" />
             </SelectTrigger>
-            <SelectContent align="end" className="rounded-xl shadow-xl p-1">
+            <SelectContent align="end" className="rounded-xl shadow-xl p-1.5">
               {otherSections.map((s: any) => (
-                <SelectItem key={s.id} value={s.id} className="h-8 rounded-md text-[10px] font-bold uppercase cursor-pointer">
+                <SelectItem key={s.id} value={s.id} className="h-10 rounded-lg text-[11px] font-bold uppercase cursor-pointer">
                   {lang === "th" ? s.titleTh : s.titleEn}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-slate-200 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all" onClick={() => onDuplicate(question)}><Copy className="w-3.5 h-3.5" /></Button>
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-slate-200 text-slate-300 hover:text-primary hover:bg-primary/5 transition-all" onClick={() => onEdit(question)}><Pencil className="w-3.5 h-3.5" /></Button>
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-slate-200 text-slate-200 hover:text-rose-600 hover:bg-rose-50 transition-all" onClick={() => onDelete(question)}><Trash2 className="w-3.5 h-3.5" /></Button>
+        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-700 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all" onClick={() => onDuplicate(question)}><Copy className="w-4.5 h-4.5" /></Button>
+        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-700 text-slate-300 hover:text-primary hover:bg-primary/5 transition-all" onClick={() => onEdit(question)}><Pencil className="w-4.5 h-4.5" /></Button>
+        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-700 text-slate-200 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all" onClick={() => onDelete(question)}><Trash2 className="w-4.5 h-4.5" /></Button>
       </div>
     </div>
   );
@@ -178,8 +179,10 @@ function SortableQuestionRow({
 function QuestionsAdmin() {
   const { lang } = useI18n();
   const [sections, setSections] = useState<SurveySection[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState("");
   
   const [qDialogOpen, setQDialogOpen] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState("");
@@ -192,6 +195,7 @@ function QuestionsAdmin() {
   const [secTitleTh, setSecTitleTh] = useState("");
   const [secDescEn, setSecDescEn] = useState("");
   const [secDescTh, setSecDescTh] = useState("");
+  const [secBUId, setSecBUId] = useState<string | undefined>(undefined);
 
   const [deleteSectionId, setDeleteSectionId] = useState<string | null>(null);
   const [deleteQ, setDeleteQ] = useState<{ sectionId: string; question: Question } | null>(null);
@@ -203,10 +207,14 @@ function QuestionsAdmin() {
 
   const fetchBank = useCallback(async () => {
     try {
-      const data = await getQuestionBank();
-      setSections(data);
+      const [bankData, buData] = await Promise.all([
+        getQuestionBank(),
+        getBusinessUnits()
+      ]);
+      setSections(bankData);
+      setBusinessUnits(buData);
       if (Object.keys(expanded).length === 0) {
-        setExpanded(Object.fromEntries(data.map(s => [s.id, true])));
+        setExpanded(Object.fromEntries(bankData.map(s => [s.id, true])));
       }
     } finally { setIsLoading(false); }
   }, [expanded]);
@@ -214,22 +222,30 @@ function QuestionsAdmin() {
   useEffect(() => { fetchBank(); }, [fetchBank]);
 
   const openNewSection = () => {
-    setEditingSecId(null); setSecTitleEn(""); setSecTitleTh(""); setSecDescEn(""); setSecDescTh("");
+    setEditingSecId(null); setSecTitleEn(""); setSecTitleTh(""); setSecDescEn(""); setSecDescTh(""); setSecBUId(undefined);
     setSecDialogOpen(true);
   };
 
   const editSection = (sec: SurveySection) => {
     setEditingSecId(sec.id); setSecTitleEn(sec.titleEn); setSecTitleTh(sec.titleTh); setSecDescEn(sec.descEn); setSecDescTh(sec.descTh);
+    setSecBUId(sec.businessUnitId);
     setSecDialogOpen(true);
   };
 
   const saveSection = async () => {
     if (!secTitleEn.trim() && !secTitleTh.trim()) return toast.error("Please enter section title");
     try {
+      const secData = { 
+        titleEn: secTitleEn, 
+        titleTh: secTitleTh, 
+        descEn: secDescEn, 
+        descTh: secDescTh,
+        businessUnitId: secBUId === "none" ? undefined : secBUId 
+      };
       if (editingSecId) {
-        await updateSection(editingSecId, { titleEn: secTitleEn, titleTh: secTitleTh, descEn: secDescEn, descTh: secDescTh });
+        await updateSection(editingSecId, secData);
       } else {
-        await createSection({ code: `SEC-${Date.now()}`, titleEn: secTitleEn, titleTh: secTitleTh, descEn: secDescEn, descTh: secDescTh });
+        await createSection({ code: `SEC-${Date.now()}`, ...secData });
       }
       await fetchBank(); setSecDialogOpen(false);
       toast.success("Structural registry updated");
@@ -327,6 +343,24 @@ function QuestionsAdmin() {
 
   const updateForm = (patch: Partial<QuestionForm>) => setForm(f => ({ ...f, ...patch }));
   const toggleSection = (id: string) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  
+  const filteredSections = useMemo(() => {
+    if (!searchTerm.trim()) return sections;
+    const q = searchTerm.toLowerCase();
+    return sections.map(sec => {
+      const matchesSec = sec.titleEn.toLowerCase().includes(q) || sec.titleTh.toLowerCase().includes(q);
+      const filteredQs = sec.questions.filter(question => 
+        question.textEn.toLowerCase().includes(q) || 
+        question.textTh.toLowerCase().includes(q) ||
+        question.category?.toLowerCase().includes(q)
+      );
+      if (matchesSec || filteredQs.length > 0) {
+        return { ...sec, questions: matchesSec ? sec.questions : filteredQs };
+      }
+      return null;
+    }).filter(Boolean) as typeof sections;
+  }, [sections, searchTerm]);
+
   const totalQuestions = useMemo(() => sections.reduce((s, sec) => s + sec.questions.length, 0), [sections]);
 
   if (isLoading) return (
@@ -340,74 +374,95 @@ function QuestionsAdmin() {
     <div className="space-y-4 animate-in fade-in duration-500 pb-10">
       
       {/* ── Compact Header ── */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Questions</h1>
-          <p className="text-xs font-medium text-slate-400">
+      <div className="flex items-center justify-between gap-6 pb-2">
+        <div className="space-y-1.5">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Questions</h1>
+          <p className="text-[15px] font-medium text-slate-400">
             {lang === "th" ? "จัดการคลังข้อคำถามแยกตามหมวดหมู่" : "Orchestrate logic nodes and survey units."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-8 px-3 rounded-lg border-slate-200 font-bold text-[10px] uppercase gap-2" onClick={() => window.print()}>
-            <Download className="w-3 h-3 text-slate-400" />
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="h-11 px-5 rounded-xl border-slate-200 font-bold text-[11px] uppercase gap-2.5 shadow-sm" onClick={() => window.print()}>
+            <Download className="w-4.5 h-4.5 text-slate-400" />
             <span className="hidden sm:inline">Snapshot</span>
           </Button>
-          <Button onClick={openNewSection} className="h-8 px-4 rounded-lg bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider">
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Define Node
+          <Button onClick={openNewSection} className="h-11 px-7 rounded-xl bg-slate-900 text-white font-bold text-[12px] uppercase tracking-wider shadow-lg shadow-slate-900/10">
+            <Plus className="w-5 h-5 mr-2" /> Define Node
           </Button>
         </div>
       </div>
 
       {/* ── KPI Strip ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         {[
-          { label: "Atomic Units", val: totalQuestions, icon: Box, color: "text-indigo-600", bg: "bg-indigo-50" },
-          { label: "Logical Nodes", val: sections.length, icon: FolderTree, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Avg Density", val: (totalQuestions / (sections.length || 1)).toFixed(1), icon: Activity, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Registry SOC3", val: "Verified", icon: ShieldCheck, color: "text-primary", bg: "bg-primary/5" },
+          { label: "Atomic Units", val: totalQuestions, icon: Box, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-900/20" },
+          { label: "Logical Nodes", val: sections.length, icon: FolderTree, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+          { label: "Avg Density", val: (totalQuestions / (sections.length || 1)).toFixed(1), icon: Activity, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20" },
+          { label: "Registry SOC3", val: "Verified", icon: ShieldCheck, color: "text-primary dark:text-primary", bg: "bg-primary/5 dark:bg-primary/10" },
         ].map(kpi => (
-          <div key={kpi.label} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm group hover:shadow-md transition-all">
-             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:scale-110", kpi.bg, kpi.color)}>
-               <kpi.icon className="w-5 h-5" />
+          <div key={kpi.label} className="flex items-center gap-5 p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm group hover:shadow-md transition-all">
+             <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:scale-110", kpi.bg, kpi.color)}>
+               <kpi.icon className="w-5.5 h-5.5" />
              </div>
              <div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{kpi.label}</div>
-                <div className="text-lg font-bold text-slate-900 tracking-tight leading-tight">{kpi.val}</div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{kpi.label}</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{kpi.val}</div>
              </div>
           </div>
         ))}
       </div>
 
+      {/* ── Filter Bar ── */}
+      <Card className="border-none shadow-sm rounded-xl overflow-hidden bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+        <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/40 dark:bg-slate-800/30">
+           <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <Search className="w-4.5 h-4.5" />
+              </div>
+              <h3 className="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white uppercase tracking-widest">Logic Bank Registry</h3>
+           </div>
+           <div className="relative flex-1 sm:w-96 max-w-md">
+              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by content, category or node..." 
+                className="h-11 pl-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[14px] shadow-none focus:ring-1 focus:ring-primary/10 transition-all font-medium" 
+              />
+           </div>
+        </div>
+      </Card>
+
       {/* ── Logic Sections ── */}
       <div className="space-y-4">
-        {sections.map(sec => (
-          <Card key={sec.id} className="border-none shadow-sm rounded-xl overflow-hidden bg-white border border-slate-100">
+        {filteredSections.map(sec => (
+          <Card key={sec.id} className="border-none shadow-sm rounded-xl overflow-hidden bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
             <div 
               className={cn(
-                "px-4 py-2.5 flex items-center justify-between cursor-pointer transition-all group",
-                expanded[sec.id] ? "bg-slate-50/50 border-b border-slate-100" : "hover:bg-slate-50/30"
+                "px-5 py-3.5 flex items-center justify-between cursor-pointer transition-all group",
+                expanded[sec.id] ? "bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700" : "hover:bg-slate-50/30 dark:hover:bg-slate-800/30"
               )}
               onClick={() => toggleSection(sec.id)}
             >
               <div className="flex items-center gap-4 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-primary font-bold text-xs shrink-0 shadow-sm group-hover:border-primary/20 transition-all">
+                <div className="w-13 h-13 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary font-bold text-base shrink-0 shadow-sm group-hover:border-primary/20 transition-all">
                   {sec.id}
                 </div>
                 <div className="min-w-0">
-                   <div className="flex items-center gap-2.5">
-                     <h3 className="text-base font-bold text-slate-900 truncate">{lang === "th" ? sec.titleTh : sec.titleEn}</h3>
-                     <Badge variant="outline" className="h-5 px-2 rounded-xl text-[9px] font-bold bg-white text-slate-400 border-slate-200">{sec.questions.length} UNITS</Badge>
+                   <div className="flex items-center gap-3">
+                     <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate">{lang === "th" ? sec.titleTh : sec.titleEn}</h3>
+                     <Badge variant="outline" className="h-7 px-3 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 uppercase tracking-wider"> {sec.questions.length} UNITS</Badge>
                    </div>
-                   <p className="text-[11px] font-medium text-slate-400 truncate opacity-70">{lang === "th" ? sec.descTh : sec.descEn}</p>
+                   <p className="text-[14px] font-medium text-slate-400 truncate opacity-70 mt-0.5">{lang === "th" ? sec.descTh : sec.descEn}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-slate-400 hover:text-primary hover:bg-white shadow-sm" onClick={(e) => { e.stopPropagation(); editSection(sec); }}><Pencil className="w-3 h-3" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white shadow-sm" onClick={(e) => { e.stopPropagation(); setDeleteSectionId(sec.id); }}><Trash2 className="w-3 h-3" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:text-primary hover:bg-white shadow-sm" onClick={(e) => { e.stopPropagation(); editSection(sec); }}><Pencil className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white shadow-sm" onClick={(e) => { e.stopPropagation(); setDeleteSectionId(sec.id); }}><Trash2 className="w-4 h-4" /></Button>
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-slate-300">
-                  {expanded[sec.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-300">
+                  {expanded[sec.id] ? <ChevronUp className="w-4.5 h-4.5" /> : <ChevronDown className="w-4.5 h-4.5" />}
                 </Button>
               </div>
             </div>
@@ -437,9 +492,9 @@ function QuestionsAdmin() {
                 <Button 
                   onClick={() => openNewQuestion(sec.id)} 
                   variant="outline" 
-                  className="w-full h-8 border-dashed border-2 border-slate-200 hover:border-primary/20 hover:bg-primary/[0.02] text-slate-400 hover:text-primary text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all"
+                  className="w-full h-11 border-dashed border-2 border-slate-200 hover:border-primary/20 hover:bg-primary/[0.02] text-slate-400 hover:text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all mt-2"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-2" /> Add Logic Unit
+                  <Plus className="w-5 h-5 mr-2.5" /> Add Logic Unit
                 </Button>
               </CardContent>
             )}
@@ -449,22 +504,22 @@ function QuestionsAdmin() {
 
       {/* ── Question Editor Dialog ── */}
       <Dialog open={qDialogOpen} onOpenChange={setQDialogOpen}>
-        <DialogContent className="sm:max-w-3xl rounded-xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-3xl rounded-xl p-0 overflow-hidden bg-white dark:bg-slate-900 border-none max-h-[90vh] flex flex-col">
           <DialogHeader className="p-4 bg-slate-900 text-white shrink-0">
              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                   <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
-                      <Box className="w-4 h-4" />
+                <div className="flex items-center gap-4">
+                   <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+                      <Box className="w-5 h-5" />
                    </div>
                    <div>
-                     <DialogTitle className="text-base font-bold">{editingQ ? "Edit Logic Unit" : "New Logic Unit"}</DialogTitle>
-                     <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Node: {activeSectionId} &bull; Protocol v2.4</span>
+                     <DialogTitle className="text-lg font-bold">{editingQ ? "Edit Logic Unit" : "New Logic Unit"}</DialogTitle>
+                     <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Node: {activeSectionId} &bull; Protocol v2.4</span>
                    </div>
                 </div>
                 <div className="flex items-center gap-2 pr-4">
-                  <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
-                     <Label className="text-[9px] font-bold text-white uppercase">Required</Label>
-                     <Switch checked={form.required} onCheckedChange={(v) => updateForm({ required: v })} className="scale-75" />
+                  <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/10">
+                     <Label className="text-[10px] font-bold text-white uppercase tracking-wider">Required</Label>
+                     <Switch checked={form.required} onCheckedChange={(v) => updateForm({ required: v })} className="scale-90" />
                   </div>
                 </div>
              </div>
@@ -486,7 +541,7 @@ function QuestionsAdmin() {
                               "flex items-center gap-3 p-2 rounded-lg border text-left transition-all",
                               form.type === t.value 
                                 ? "bg-slate-900 border-slate-900 text-white shadow-lg" 
-                                : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
+                                : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 hover:border-slate-200 dark:hover:border-slate-600"
                             )}
                           >
                              <div className={cn("w-7 h-7 rounded-md flex items-center justify-center shrink-0", form.type === t.value ? "bg-white/20" : t.color)}>
@@ -590,10 +645,10 @@ function QuestionsAdmin() {
             </div>
           </ScrollArea>
 
-          <DialogFooter className="p-3 px-5 bg-slate-50 border-t flex justify-end gap-2 shrink-0">
-             <Button variant="ghost" size="sm" onClick={() => setQDialogOpen(false)} className="px-4 h-8 rounded-lg font-bold text-[10px] text-slate-400 uppercase">Cancel</Button>
-             <Button onClick={saveQuestion} size="sm" className="px-6 h-8 rounded-lg bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider">
-                <Save className="w-3 h-3 mr-2" /> Sync Logic Unit
+          <DialogFooter className="p-4 px-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
+             <Button variant="ghost" size="sm" onClick={() => setQDialogOpen(false)} className="px-5 h-9 rounded-xl font-bold text-[11px] text-slate-400 uppercase">Cancel</Button>
+             <Button onClick={saveQuestion} size="sm" className="px-7 h-9 rounded-xl bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider">
+                <Save className="w-4 h-4 mr-2.5" /> Sync Logic Unit
              </Button>
           </DialogFooter>
         </DialogContent>
@@ -601,15 +656,15 @@ function QuestionsAdmin() {
 
       {/* ── Section Editor Dialog ── */}
       <Dialog open={secDialogOpen} onOpenChange={setSecDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-xl p-0 overflow-hidden bg-white shadow-2xl">
+        <DialogContent className="sm:max-w-md rounded-xl p-0 overflow-hidden bg-white dark:bg-slate-900 shadow-2xl border-none">
           <DialogHeader className="p-4 bg-slate-900 text-white shrink-0">
-             <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
-                   <FolderTree className="w-4 h-4" />
+             <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+                   <FolderTree className="w-5 h-5" />
                 </div>
                 <div>
-                   <DialogTitle className="text-base font-bold">{editingSecId ? "Modify Logic Node" : "Define Logic Node"}</DialogTitle>
-                   <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Structural Topology v2.4</span>
+                   <DialogTitle className="text-lg font-bold">{editingSecId ? "Modify Logic Node" : "Define Logic Node"}</DialogTitle>
+                   <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Structural Topology v2.4</span>
                 </div>
              </div>
           </DialogHeader>
@@ -632,10 +687,29 @@ function QuestionsAdmin() {
                 <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Description (English)</Label>
                 <Input value={secDescEn} onChange={(e) => setSecDescEn(e.target.value)} className="h-9 rounded-lg border-slate-200 font-bold text-xs" />
              </div>
+             <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Target Business Unit</Label>
+                <Select value={secBUId || "none"} onValueChange={setSecBUId}>
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 font-bold text-xs bg-slate-50/30">
+                    <SelectValue placeholder="Select Business Unit" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl shadow-xl border-slate-100 p-1">
+                    <SelectItem value="none" className="h-10 rounded-lg text-xs font-bold text-slate-400">GLOBAL (ALL UNITS)</SelectItem>
+                    {businessUnits.map(bu => (
+                      <SelectItem key={bu.id} value={bu.id} className="h-10 rounded-lg text-xs font-bold">
+                        {lang === "th" ? bu.name_th : bu.name_en}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] font-medium text-slate-400 px-1 italic">
+                  Mapping this node to a BU restricts it to that organizational context.
+                </p>
+             </div>
           </div>
-          <DialogFooter className="p-3 px-5 bg-slate-50 border-t flex justify-end gap-2 shrink-0">
-             <Button variant="ghost" size="sm" onClick={() => setSecDialogOpen(false)} className="px-4 h-8 rounded-lg font-bold text-[10px] text-slate-400 uppercase">Cancel</Button>
-             <Button onClick={saveSection} size="sm" className="px-6 h-8 rounded-lg bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider">Save Node</Button>
+          <DialogFooter className="p-4 px-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
+             <Button variant="ghost" size="sm" onClick={() => setSecDialogOpen(false)} className="px-5 h-9 rounded-xl font-bold text-[11px] text-slate-400 uppercase">Cancel</Button>
+             <Button onClick={saveSection} size="sm" className="px-7 h-9 rounded-xl bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider">Save Node</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -650,7 +724,7 @@ function QuestionsAdmin() {
 
       {/* ── Purge Confirmations ── */}
       <AlertDialog open={!!deleteSectionId} onOpenChange={(o) => !o && setDeleteSectionId(null)}>
-        <AlertDialogContent className="rounded-xl p-5 text-center flex flex-col items-center gap-4 max-w-[320px]">
+        <AlertDialogContent className="rounded-xl p-5 text-center flex flex-col items-center gap-4 max-w-[320px] bg-white dark:bg-slate-900 border-none shadow-2xl">
            <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shadow-inner">
               <Trash2 className="w-6 h-6" />
            </div>
@@ -668,7 +742,7 @@ function QuestionsAdmin() {
       </AlertDialog>
 
       <AlertDialog open={!!deleteQ} onOpenChange={(o) => !o && setDeleteQ(null)}>
-        <AlertDialogContent className="rounded-xl p-5 text-center flex flex-col items-center gap-4 max-w-[320px]">
+        <AlertDialogContent className="rounded-xl p-5 text-center flex flex-col items-center gap-4 max-w-[320px] bg-white dark:bg-slate-900 border-none shadow-2xl">
            <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shadow-inner">
               <Trash2 className="w-6 h-6" />
            </div>

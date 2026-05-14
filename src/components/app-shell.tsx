@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ClipboardList, ListChecks, Users, Building2, BarChart3,
   UserCircle2, LogOut, ShieldCheck, Globe, Moon, Sun, FileEdit, BarChart2,
   Bell, Menu, ChevronRight, ChevronLeft, Activity, Signal,
-  Clock, FileText,
+  Clock, FileText, Layers, Database,
 } from "lucide-react";
 import { useEffect, useState, useMemo, memo, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
@@ -24,13 +24,13 @@ const LiveClock = memo(() => {
     return () => clearInterval(id);
   }, []);
   return (
-    <div className="flex items-center gap-2.5 group cursor-default">
-      <div className="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
-        <Clock className="w-3.5 h-3.5" />
+    <div className="flex items-center gap-3 group cursor-default">
+      <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+        <Clock className="w-5 h-5" />
       </div>
       <div className="space-y-0">
-        <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/60">System Time</div>
-        <div className="text-[13px] font-bold tracking-tight text-foreground tabular-nums leading-none">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">System Time</div>
+        <div className="text-[15px] font-bold tracking-tight text-foreground tabular-nums leading-none">
           {t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
         </div>
       </div>
@@ -49,11 +49,12 @@ const NAV: NavItem[] = [
   { to: "/dashboard",        labelKey: "nav.dashboard",     icon: LayoutDashboard },
   { to: "/survey",           labelKey: "nav.takeSurvey",    icon: FileEdit },
   { to: "/results",          labelKey: "nav.results",       icon: BarChart3,    roles: ["super_admin","hr_admin","manager"] },
-  { to: "/notifications",    labelKey: "nav.notifications", icon: Bell,         roles: ["super_admin","hr_admin","manager","employee"] },
   { to: "/admin/surveys",    labelKey: "nav.surveys",       icon: ClipboardList,roles: ["super_admin","hr_admin"] },
   { to: "/admin/questions",  labelKey: "nav.questions",     icon: ListChecks,   roles: ["super_admin","hr_admin"] },
   { to: "/admin/users",      labelKey: "nav.users",         icon: Users,        roles: ["super_admin","hr_admin"] },
   { to: "/admin/departments",labelKey: "nav.departments",   icon: Building2,    roles: ["super_admin","hr_admin"] },
+  { to: "/admin/business-units",labelKey: "nav.businessUnits",icon: Layers,        roles: ["super_admin","hr_admin"] },
+  { to: "/admin/raw-data",      labelKey: "nav.rawData",      icon: Database,      roles: ["super_admin","hr_admin"] },
   { to: "/reports",          labelKey: "nav.reports",       icon: BarChart2,    roles: ["super_admin","hr_admin","manager"] },
   { to: "/profile",          labelKey: "nav.profile",       icon: UserCircle2 },
 ];
@@ -89,24 +90,24 @@ const NavLink = memo(({ item, pathname, sidebarOpen, t, onClick }: NavLinkProps)
       onClick={onClick}
       className={cn(
         "group relative flex items-center transition-colors duration-200",
-        sidebarOpen ? "px-3 py-2 mx-2 rounded-lg gap-2.5" : "px-0 py-2.5 justify-center",
+        sidebarOpen ? "px-3 py-2.5 mx-2 rounded-xl gap-3" : "px-0 py-3 justify-center",
         active
           ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
       )}
     >
-      <div className={cn("flex items-center justify-center shrink-0", sidebarOpen ? "w-5 h-5" : "w-6 h-6")}>
-        <Icon className="w-5 h-5" />
+      <div className={cn("flex items-center justify-center shrink-0", sidebarOpen ? "w-6 h-6" : "w-7 h-7")}>
+        <Icon className={cn(active ? "w-5 h-5" : "w-5 h-5")} />
       </div>
 
       {sidebarOpen && (
-        <span className="font-semibold text-[13px] tracking-tight whitespace-nowrap truncate">
+        <span className="font-semibold text-[15px] tracking-tight whitespace-nowrap truncate">
           {t(item.labelKey)}
         </span>
       )}
 
       {active && sidebarOpen && (
-        <div className="ml-auto w-1 h-1 rounded-full bg-white/60 shrink-0" />
+        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/60 shrink-0" />
       )}
     </Link>
   );
@@ -130,10 +131,10 @@ const NavLinks = memo(({ mainItems, adminItems, pathname, sidebarOpen, t, onClic
 
     {adminItems.length > 0 && (
       <>
-        <div className={cn("pt-4 pb-1.5 px-5", !sidebarOpen && "flex justify-center px-0 pt-4")}>
+        <div className={cn("pt-5 pb-2 px-6", !sidebarOpen && "flex justify-center px-0 pt-5")}>
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50 select-none">Admin</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50 select-none">Admin Control</span>
               <div className="h-px flex-1 bg-border/40" />
             </div>
           ) : (
@@ -200,21 +201,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* ── Desktop Sidebar ── */}
       <aside className={cn(
         "hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-[width] duration-300 ease-in-out relative z-50 shrink-0",
-        sidebarOpen ? "w-[220px]" : "w-[64px]"
+        sidebarOpen ? "w-[280px]" : "w-[80px]"
       )}>
 
         {/* Branding */}
-        <div className={cn("flex items-center h-14 border-b border-slate-100 dark:border-slate-800 shrink-0", sidebarOpen ? "px-4 gap-2.5" : "justify-center")}>
-          <Link to="/dashboard" className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <ShieldCheck className="w-4 h-4 text-white" />
+        <div className={cn("flex items-center h-[72px] border-b border-slate-100 dark:border-slate-800 shrink-0", sidebarOpen ? "px-6 gap-3" : "justify-center")}>
+          <Link to="/dashboard" className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-primary flex items-center justify-center shrink-0 shadow-sm">
+              <ShieldCheck className="w-5.5 h-5.5 text-white" />
             </div>
             {sidebarOpen && (
               <div className="min-w-0">
-                <div className="text-xs font-bold tracking-tight text-foreground truncate">{t("app.name")}</div>
-                <div className="flex items-center gap-1 mt-0">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/60">Operational</span>
+                <div className="text-[15px] font-black tracking-tight text-foreground truncate uppercase">{t("app.name")}</div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Operational</span>
                 </div>
               </div>
             )}
@@ -233,28 +234,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* User Footer */}
-        <div className="border-t border-slate-100 dark:border-slate-800 p-2 space-y-0.5">
+        <div className="border-t border-slate-100 dark:border-slate-800 p-2.5 space-y-1">
           {user && (
             <Link
               to="/profile"
               className={cn(
-                "flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                "flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
                 !sidebarOpen && "justify-center"
               )}
             >
-              <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
                 {user.avatarUrl && !avatarFailed ? (
                   <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setAvatarFailed(true)} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-foreground bg-muted">
+                  <div className="w-full h-full flex items-center justify-center text-[12px] font-bold text-foreground bg-muted">
                     {user.nameEn.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                   </div>
                 )}
               </div>
               {sidebarOpen && (
                 <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-semibold text-foreground truncate">{lang === "th" ? user.nameTh : user.nameEn}</div>
-                  <div className="text-[10px] font-medium text-muted-foreground truncate capitalize">{user.role.replace("_", " ")}</div>
+                  <div className="text-[15px] font-bold text-foreground truncate">{lang === "th" ? user.nameTh : user.nameEn}</div>
+                  <div className="text-[12px] font-medium text-muted-foreground truncate capitalize">{user.role.replace("_", " ")}</div>
                 </div>
               )}
             </Link>
@@ -262,11 +263,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             onClick={handleLogout}
             className={cn(
-              "flex items-center gap-2.5 w-full p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-[13px] font-medium",
+              "flex items-center gap-2.5 w-full p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-[14px] font-medium",
               !sidebarOpen && "justify-center"
             )}
           >
-            <LogOut className="w-4 h-4 shrink-0" />
+            <LogOut className="w-4.5 h-4.5 shrink-0" />
             {sidebarOpen && <span>Sign out</span>}
           </button>
         </div>
@@ -284,7 +285,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Header */}
-        <header className="h-14 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800">
+        <header className="h-[72px] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl flex items-center justify-between px-6 md:px-8 sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-6">
 
             {/* Mobile hamburger */}
@@ -419,7 +420,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {/* Main workspace */}
-        <main className="flex-1 p-4 md:p-5 lg:px-8 lg:py-6 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-6 md:p-8 lg:px-10 lg:py-8 max-w-[1800px] w-full mx-auto animate-in fade-in duration-500">
           {children}
         </main>
       </div>

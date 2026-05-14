@@ -46,18 +46,18 @@ function ProfilePage() {
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       
       {/* ── Compact Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Identity Profile</h1>
-          <p className="text-sm text-muted-foreground">Manage your professional identity and session settings.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Identity Profile</h1>
+          <p className="text-[15px] font-medium text-slate-400">Manage your professional identity and session settings.</p>
         </div>
-        <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" className="h-9 px-4 rounded-lg font-bold text-xs gap-2 border-slate-200" onClick={logout}>
-              <LogOut className="w-4 h-4 text-rose-500" /> Decommission Session
-           </Button>
-           <Button size="sm" className="h-9 px-4 rounded-lg bg-slate-900 text-white font-bold text-xs uppercase tracking-wider gap-2 shadow-sm" onClick={handleSave}>
-              <Save className="w-4 h-4" /> Synchronize Profile
-           </Button>
+        <div className="flex items-center gap-3">
+            <Button variant="outline" className="h-10 px-5 rounded-xl font-bold text-[11px] uppercase gap-2.5 border-slate-200 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 shadow-sm" onClick={logout}>
+               <LogOut className="w-4.5 h-4.5 text-rose-500" /> Decommission Session
+            </Button>
+            <Button className="h-10 px-6 rounded-xl bg-slate-900 dark:bg-primary text-white font-bold text-[11px] uppercase tracking-wider gap-2.5 shadow-lg shadow-slate-900/10 dark:shadow-primary/10" onClick={handleSave}>
+               <Save className="w-4.5 h-4.5" /> Synchronize Profile
+            </Button>
         </div>
       </div>
 
@@ -65,125 +65,124 @@ function ProfilePage() {
         
         {/* Profile Sidebar */}
         <div className="lg:col-span-4 space-y-4">
-           <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden group">
-              <div className="h-24 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 relative">
-                 <div className="absolute -bottom-10 inset-x-0 flex justify-center">
-                    <div className="relative">
-                      <div className="w-20 h-20 rounded-2xl bg-white border-4 border-white shadow-lg overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
-                        {user.avatarUrl ? (
-                          <img src={user.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="w-10 h-10 text-slate-200" />
-                        )}
+             <Card className="border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50 group">
+                <div className="h-28 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 relative">
+                   <div className="absolute -bottom-12 inset-x-0 flex justify-center">
+                      <div className="relative">
+                        <div className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+                         {user.avatarUrl ? (
+                           <img src={user.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                         ) : (
+                           <User className="w-12 h-12 text-slate-200" />
+                         )}
+                       </div>
+                       <button className="absolute bottom-1 right-1 w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-md hover:bg-primary transition-all">
+                         <Camera className="w-4 h-4" />
+                       </button>
+                     </div>
+                  </div>
+               </div>
+                <CardContent className="pt-14 pb-8 px-8 text-center space-y-5">
+                   <div className="space-y-1">
+                     <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{lang === "th" ? user.nameTh : user.nameEn}</h2>
+                     <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{user.role.replace("_", " ")}</p>
+                   </div>
+                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50 dark:border-slate-800">
+                      <div className="text-left">
+                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">Employee ID</span>
+                         <span className="text-[15px] font-bold text-slate-700 dark:text-slate-300">{user?.employeeCode.toUpperCase()}</span>
                       </div>
-                      <button className="absolute bottom-1 right-1 w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-md hover:bg-primary transition-all">
-                        <Camera className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                 </div>
-              </div>
-              <CardContent className="pt-12 pb-6 px-6 text-center space-y-4">
-                 <div className="space-y-0.5">
-                   <h2 className="text-lg font-bold text-slate-900 tracking-tight">{lang === "th" ? user.nameTh : user.nameEn}</h2>
-                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{user.role.replace("_", " ")}</p>
-                 </div>
-                 
-                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-50">
-                    <div className="text-left">
-                       <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block">Employee ID</span>
-                       <span className="text-sm font-bold text-slate-700">{user?.employeeCode.toUpperCase()}</span>
-                    </div>
-                    <div className="text-right">
-                       <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block">Status</span>
-                       <span className="text-sm font-bold text-emerald-600 uppercase">Active Node</span>
-                    </div>
-                 </div>
-              </CardContent>
-           </Card>
+                     <div className="text-right">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">Status</span>
+                        <span className="text-[15px] font-bold text-emerald-600 uppercase">Active Node</span>
+                     </div>
+                  </div>
+               </CardContent>
+            </Card>
 
-           <Card className="border-slate-100 shadow-sm rounded-xl bg-slate-900 text-white overflow-hidden relative group">
-              <CardContent className="p-5 space-y-4 relative z-10">
-                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center border border-white/10">
-                       <ShieldAlert className="w-5 h-5 text-primary" />
-                    </div>
-                    <h3 className="text-sm font-bold tracking-tight">Security Protocol</h3>
-                 </div>
-                 <p className="text-xs font-medium text-slate-400 leading-relaxed italic">
-                   Advanced encryption active. Multi-layer structural data protection initialized.
-                 </p>
-                 <Button variant="ghost" className="w-full h-9 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-white hover:text-slate-900 transition-all">
-                    Reset Access Credentials
-                 </Button>
-              </CardContent>
-           </Card>
+            <Card className="border-slate-100 shadow-sm rounded-2xl bg-slate-900 text-white overflow-hidden relative group">
+               <CardContent className="p-6 space-y-5 relative z-10">
+                  <div className="flex items-center gap-4">
+                     <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
+                        <ShieldAlert className="w-6 h-6 text-primary" />
+                     </div>
+                     <h3 className="text-base font-bold tracking-tight">Security Protocol</h3>
+                  </div>
+                  <p className="text-sm font-medium text-slate-400 leading-relaxed italic">
+                    Advanced encryption active. Multi-layer structural data protection initialized.
+                  </p>
+                  <Button variant="ghost" className="w-full h-10 rounded-xl bg-white/5 border border-white/10 text-[11px] font-bold uppercase tracking-widest text-white hover:bg-white hover:text-slate-900 transition-all">
+                     Reset Access Credentials
+                  </Button>
+               </CardContent>
+            </Card>
         </div>
 
         {/* Form Main Area */}
-        <div className="lg:col-span-8 space-y-4">
-          <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden">
-            <CardHeader className="px-5 py-4 border-b bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-primary shadow-sm">
-                  <User className="w-4 h-4" />
+         <div className="lg:col-span-8 space-y-4">
+          <Card className="border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
+            <CardHeader className="px-6 py-5 border-b dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary shadow-sm">
+                   <User className="w-5 h-5" />
                 </div>
-                <div>
-                  <CardTitle className="text-sm font-bold tracking-tight">Identity Attributes</CardTitle>
-                  <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Personnel Metadata Mapping</CardDescription>
+                 <div>
+                  <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Identity Attributes</CardTitle>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Personnel Metadata Mapping</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-5 space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
-                    <UserCircle2 className="w-3 h-3" /> Full Name (Local)
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
+                    <UserCircle2 className="w-3.5 h-3.5" /> Full Name (Local)
                   </Label>
-                  <Input 
+                   <Input 
                     value={nameTh} 
                     onChange={(e) => setNameTh(e.target.value)} 
-                    className="h-10 rounded-lg border-slate-200 bg-white font-semibold text-sm focus-visible:ring-primary/20"
+                    className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-[15px] text-slate-900 dark:text-white focus-visible:ring-primary/20 shadow-sm transition-all"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
-                    <Globe className="w-3 h-3" /> Full Name (Global)
+                <div className="space-y-2.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
+                    <Globe className="w-3.5 h-3.5" /> Full Name (Global)
                   </Label>
-                  <Input 
+                   <Input 
                     value={nameEn} 
                     onChange={(e) => setNameEn(e.target.value)} 
-                    className="h-10 rounded-lg border-slate-200 bg-white font-semibold text-sm focus-visible:ring-primary/20"
+                    className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-[15px] text-slate-900 dark:text-white focus-visible:ring-primary/20 shadow-sm transition-all"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
-                    <Mail className="w-3 h-3" /> Communication Node
+                <div className="space-y-2.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
+                    <Mail className="w-3.5 h-3.5" /> Communication Node
                   </Label>
-                  <Input 
+                   <Input 
                     value={user.email} 
                     disabled 
-                    className="h-10 rounded-lg border-slate-200 bg-slate-50 text-slate-500 font-semibold text-sm cursor-not-allowed italic"
+                    className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold text-[15px] cursor-not-allowed italic"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
-                    <Building2 className="w-3 h-3" /> Structural Topology
+                <div className="space-y-2.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
+                    <Building2 className="w-3.5 h-3.5" /> Structural Topology
                   </Label>
-                  <Input 
+                   <Input 
                     value={user.department} 
                     disabled 
-                    className="h-10 rounded-lg border-slate-200 bg-slate-50 text-slate-500 font-semibold text-sm cursor-not-allowed italic"
+                    className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold text-[15px] cursor-not-allowed italic"
                   />
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-4 relative overflow-hidden group">
-                <div className="w-10 h-10 rounded-lg bg-white border border-primary/10 flex items-center justify-center text-primary shrink-0 shadow-sm">
-                  <BadgeInfo className="w-5 h-5" />
+               <div className="p-5 rounded-2xl bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 flex items-start gap-5 relative overflow-hidden group">
+                <div className="w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-primary/10 dark:border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-sm">
+                  <BadgeInfo className="w-6 h-6" />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-primary">Synchronized Personnel Mapping</h4>
-                  <p className="text-xs font-medium text-slate-500 leading-relaxed italic opacity-80">
+                 <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-primary">Synchronized Personnel Mapping</h4>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed italic opacity-80">
                     {lang === "th" 
                       ? "รายละเอียดของคุณถูกดึงจากระบบส่วนกลางอัตโนมัติ หากไม่ถูกต้อง โปรดติดต่อ HR" 
                       : "Personnel attributes are orchestrated via the core HRMS engine. For corrections, contact HR Command."}
@@ -193,40 +192,40 @@ function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden">
-            <CardHeader className="px-5 py-4 bg-slate-50/50 border-b">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-primary shadow-sm">
-                  <Bell className="w-4 h-4" />
+           <Card className="border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
+            <CardHeader className="px-6 py-5 bg-slate-50/50 dark:bg-slate-800/30 border-b dark:border-slate-800">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary shadow-sm">
+                   <Bell className="w-5 h-5" />
                 </div>
-                <div>
-                  <CardTitle className="text-sm font-bold tracking-tight">{lang === "th" ? "ตรรกะการสื่อสาร" : "Communication Logic"}</CardTitle>
-                  <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Operational Dispatch Settings</CardDescription>
+                 <div>
+                  <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">{lang === "th" ? "ตรรกะการสื่อสาร" : "Communication Logic"}</CardTitle>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Operational Dispatch Settings</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-3 divide-y divide-slate-50">
+            <CardContent className="p-4 divide-y divide-slate-50 dark:divide-slate-800">
               {notifs.map((n) => {
                 const Icon = n.icon;
                 return (
-                  <div key={n.id} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-all group rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-300 group-hover:text-primary transition-all shadow-sm">
-                        <Icon className="w-5 h-5" />
+                    <div className="flex items-center justify-between p-5 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-all group rounded-xl">
+                      <div className="flex items-center gap-5">
+                        <div className="w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-300 group-hover:text-primary transition-all shadow-sm">
+                          <Icon className="w-6 h-6" />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[15px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors leading-none">{lang === "th" ? n.labelTh : n.labelEn}</span>
+                          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Protocol Active</p>
+                        </div>
                       </div>
-                      <div className="space-y-0.5">
-                        <span className="text-sm font-bold text-slate-700 group-hover:text-primary transition-colors">{lang === "th" ? n.labelTh : n.labelEn}</span>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Protocol Active</p>
-                      </div>
+                      <Switch
+                        checked={n.enabled}
+                        onCheckedChange={(v) =>
+                          setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, enabled: v } : x)))
+                        }
+                        className="data-[state=checked]:bg-primary"
+                      />
                     </div>
-                    <Switch
-                      checked={n.enabled}
-                      onCheckedChange={(v) =>
-                        setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, enabled: v } : x)))
-                      }
-                      className="data-[state=checked]:bg-slate-900"
-                    />
-                  </div>
                 );
               })}
             </CardContent>

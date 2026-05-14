@@ -1,4 +1,4 @@
-import { MOCK_SURVEYS, OPEN_FEEDBACK, type MockSurvey } from "@/lib/mock-data";
+
 
 export interface SurveySession {
   surveyId: string;
@@ -32,9 +32,3 @@ export function clearDraft(surveyId: string, userId?: string) {
   localStorage.removeItem(storageKey(surveyId, userId));
 }
 
-// mock: resolve survey by id
-export function getMockSurvey(id: string): MockSurvey | undefined {
-  return MOCK_SURVEYS.find((s) => s.id === id);
-}
-
-export { OPEN_FEEDBACK };

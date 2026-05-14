@@ -70,7 +70,7 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
             <Target className="w-4 h-4" />
             <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Operational Hub</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-white leading-tight">
             {t("survey.title")}
           </h1>
           <p className="text-sm font-medium text-muted-foreground/80 max-w-lg">
@@ -79,9 +79,9 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
               : "Enterprise campaign intelligence center. Share your voice to drive organizational excellence."}
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-slate-50 p-1.5 px-3 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800">
           <div className="text-right">
-            <div className="text-2xl font-bold tabular-nums leading-none text-slate-900">{surveys.length}</div>
+            <div className="text-2xl font-bold tabular-nums leading-none text-slate-900 dark:text-white">{surveys.length}</div>
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mt-1">Active Nodes</div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -94,7 +94,7 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
         {surveys.length > 0 ? surveys.map((s) => (
           <Card 
             key={s.id} 
-            className="group relative overflow-hidden bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-primary/30 hover:shadow-lg transition-all duration-300 cursor-pointer rounded-2xl" 
+            className="group relative overflow-hidden bg-white dark:bg-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-800 hover:border-primary/30 hover:shadow-lg transition-all duration-300 cursor-pointer rounded-2xl" 
             onClick={() => onSelect(s)}
           >
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
@@ -103,7 +103,7 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
             
             <CardContent className="p-6 space-y-6 relative">
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary group-hover:scale-105 transition-all shadow-sm border border-slate-100">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-primary group-hover:scale-105 transition-all shadow-sm border border-slate-100 dark:border-slate-700">
                   <ClipboardList className="w-6 h-6" />
                 </div>
                 <Badge variant={s.status === "Active" ? "default" : "secondary"} className="h-6 text-[9px] font-bold uppercase tracking-wider px-3 rounded-full">
@@ -136,11 +136,11 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
               <div className="pt-2 flex items-center justify-between gap-4">
                  <div className="flex -space-x-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-7 h-7 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center overflow-hidden shadow-sm">
+                    <div key={i} className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shadow-sm">
                       <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${s.id}${i}`} alt="user" className="w-full h-full object-cover" />
                     </div>
                   ))}
-                  <div className="w-7 h-7 rounded-full border-2 border-white bg-primary/10 text-primary text-[8px] font-bold flex items-center justify-center shadow-sm">
+                  <div className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 bg-primary/10 text-primary text-[8px] font-bold flex items-center justify-center shadow-sm">
                     +{Math.floor(Math.random() * 50)}
                   </div>
                 </div>
@@ -233,7 +233,12 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
         if (typeof value === "number") numericValue = value;
         else if (Array.isArray(value)) arrayTextValue = value;
         else if (typeof value === "object" && value !== null) jsonbValue = value as Record<string, string>;
-        else textValue = String(value ?? "");
+        else {
+          textValue = String(value ?? "");
+          if (!isNaN(Number(textValue)) && textValue.trim() !== "") {
+            numericValue = Number(textValue);
+          }
+        }
         return { questionId, numericValue, textValue, arrayTextValue, jsonbValue };
       });
 
@@ -297,12 +302,12 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
   if (isDone) {
     return (
       <div className="max-w-xl mx-auto py-10 animate-in zoom-in-95 duration-500">
-        <Card className="text-center p-10 shadow-xl border-slate-100 relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-xl">
+        <Card className="text-center p-10 shadow-xl border-slate-100 dark:border-slate-800 relative overflow-hidden rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-indigo-500 to-primary/50" />
-          <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-emerald-50/50">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-emerald-50/50 dark:ring-emerald-500/10">
+            <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">{t("survey.thankYou")}</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{t("survey.thankYou")}</h2>
           <p className="text-slate-500 mt-4 text-sm font-medium leading-relaxed max-w-sm mx-auto italic opacity-80">
             {t("survey.thankYouDesc")}
           </p>
@@ -337,11 +342,11 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
           </button>
           <div className="flex items-center gap-4">
             {savedAt && (
-              <span className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 shadow-sm">
+              <span className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-500/20 shadow-sm">
                 <Save className="w-3 h-3" /> {t("survey.autoSaved")}
               </span>
             )}
-            <Badge variant="outline" className="h-7 text-[9px] font-bold tracking-wider uppercase border-primary/20 text-primary px-3 rounded-lg bg-primary/5">
+            <Badge variant="outline" className="h-7 text-[9px] font-bold tracking-wider uppercase border-primary/20 text-primary px-3 rounded-lg bg-primary/5 dark:bg-primary/20">
               Seq {step + 1} / {totalSteps}
             </Badge>
           </div>
@@ -349,7 +354,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
         
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mt-2">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
               {step === 0
                 ? (lang === "th" ? "ภารกิจกำลังจะเริ่ม" : "Commence Mission")
                 : isFeedbackStep
@@ -369,7 +374,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
           </div>
         </div>
 
-        <div className="relative h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200">
+        <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1 border border-slate-200 dark:border-slate-700">
           <div 
             className="absolute top-0 left-0 h-full bg-primary transition-all duration-700 ease-out shadow-[0_0_10px_rgba(var(--primary),0.3)]"
             style={{ width: `${progress}%` }}
@@ -384,16 +389,16 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
         </div>
       </div>
 
-      <Card className="shadow-lg border border-slate-200 relative overflow-hidden group rounded-2xl bg-white" key={pageKey}>
+      <Card className="shadow-lg border border-slate-200 dark:border-slate-800 relative overflow-hidden group rounded-2xl bg-white dark:bg-slate-900/50" key={pageKey}>
         {/* Step 0: Intro */}
         {step === 0 && (
           <div className="p-8 md:p-10 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-            <div className="relative p-6 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden">
+            <div className="relative p-6 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 overflow-hidden">
                <div className="absolute -left-1 top-6 bottom-6 w-1 bg-primary rounded-full" />
                <div className="absolute top-0 right-0 p-6 opacity-5">
                   <ShieldCheck className="w-16 h-16" />
                </div>
-              <p className="text-lg font-medium text-slate-700 leading-relaxed italic relative pr-10">
+              <p className="text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed italic relative pr-10">
                 "{lang === "th"
                   ? "แคมเปญนี้ออกแบบมาเพื่อรับฟังเสียงที่แท้จริงของคุณ ข้อมูลของคุณจะได้รับการปกป้องอย่างสูงสุดภายใต้มาตรฐานความปลอดภัย"
                   : "This operational campaign is designed to capture authentic employee sentiment. Your responses are fortified by professional standards."}"
@@ -417,17 +422,17 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
 
             <Separator className="bg-slate-100" />
 
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-xl bg-slate-50 border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                <div className="absolute top-0 right-0 p-4 opacity-5">
                   <Fingerprint className="w-16 h-16 text-primary" />
                </div>
               <div className="flex items-center gap-4 relative">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow-sm border border-slate-200">
+                <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center text-primary shadow-sm border border-slate-200 dark:border-slate-700">
                   <Globe className={cn("w-5 h-5 transition-all duration-1000", draft.anonymous ? "animate-spin text-indigo-600" : "")} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-base tracking-tight text-slate-900">{lang === "th" ? "โหมดไม่ระบุตัวตน" : "Cloak Mode (Anonymous)"}</h4>
-                  <p className="text-[11px] font-medium text-slate-500 mt-0.5 max-w-sm">
+                  <h4 className="font-bold text-base tracking-tight text-slate-900 dark:text-white">{lang === "th" ? "โหมดไม่ระบุตัวตน" : "Cloak Mode (Anonymous)"}</h4>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 max-w-sm">
                     {lang === "th" ? "เปิดใช้งานเพื่อซ่อนอัตลักษณ์จากการประมวลผล" : "Enable to fully mask your identity node."}
                   </p>
                 </div>
@@ -450,9 +455,9 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
             </div>
             
             {user && !draft.anonymous && (
-              <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 animate-in fade-in duration-1000 uppercase tracking-widest">
+              <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 animate-in fade-in duration-1000 uppercase tracking-widest">
                 <UserCircle2 className="w-3.5 h-3.5 text-primary" />
-                {lang === "th" ? "ยืนยันตัวตนพนักงาน" : "Identity Linked"}: <span className="text-slate-900">{lang === "th" ? user.nameTh : user.nameEn}</span>
+                {lang === "th" ? "ยืนยันตัวตนพนักงาน" : "Identity Linked"}: <span className="text-slate-900 dark:text-slate-300">{lang === "th" ? user.nameTh : user.nameEn}</span>
               </div>
             )}
           </div>
@@ -466,8 +471,8 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-xl tracking-tight text-slate-900">{t("survey.confirmProfile")}</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{t("survey.profileReviewDesc")}</p>
+                <h3 className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">{t("survey.confirmProfile")}</h3>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">{t("survey.profileReviewDesc")}</p>
               </div>
             </div>
 
@@ -480,13 +485,13 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                     { icon: Briefcase, label: t("common.level"), value: hrmsProfile.level, color: "text-emerald-600" },
                     { icon: MapPin, label: t("common.location"), value: hrmsProfile.location, color: "text-amber-600" },
                   ].map((f) => (
-                    <div key={f.label} className="p-4 rounded-xl bg-white border border-slate-200 flex items-center gap-4 group/item hover:bg-slate-50 transition-all shadow-sm">
-                      <div className={cn("w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shrink-0", f.color)}>
+                    <div key={f.label} className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-4 group/item hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all shadow-sm">
+                      <div className={cn("w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-900 flex items-center justify-center border border-slate-100 dark:border-slate-800 shrink-0", f.color)}>
                         <f.icon className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{f.label}</p>
-                        <p className="font-bold text-sm truncate tracking-tight text-slate-900">{f.value}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">{f.label}</p>
+                        <p className="font-bold text-sm truncate tracking-tight text-slate-900 dark:text-white">{f.value}</p>
                       </div>
                     </div>
                   ))}
@@ -531,13 +536,13 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
         {currentSection && (
           <div className="p-8 md:p-10 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
             <div className="space-y-2">
-              <h3 className="font-bold text-xl tracking-tight flex items-center gap-3 text-slate-900">
+              <h3 className="font-bold text-xl tracking-tight flex items-center gap-3 text-slate-900 dark:text-white">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
                   <Layout className="w-4 h-4" />
                 </div>
                 {lang === "th" ? currentSection.titleTh : currentSection.titleEn}
               </h3>
-              <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-xl italic">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl italic">
                 {lang === "th" ? currentSection.descTh : currentSection.descEn}
               </p>
             </div>
@@ -549,7 +554,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                   <div className="space-y-6">
                     <div className="space-y-5">
                       <div className="flex items-start justify-between gap-6">
-                        <Label className="text-base font-bold leading-tight text-slate-800 tracking-tight flex-1">
+                        <Label className="text-base font-bold leading-tight text-slate-800 dark:text-slate-200 tracking-tight flex-1">
                           {idx + 1}. {lang === "th" ? q.textTh : q.textEn}
                           {q.required && <span className="text-rose-500 ml-1 text-xl leading-none">*</span>}
                         </Label>
@@ -578,23 +583,23 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
         {isFeedbackStep && (
           <div className="p-8 md:p-10 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
              <div className="space-y-2">
-              <h3 className="font-bold text-xl tracking-tight flex items-center gap-3 text-slate-900">
+              <h3 className="font-bold text-xl tracking-tight flex items-center gap-3 text-slate-900 dark:text-white">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 {t("survey.feedback")}
               </h3>
-              <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-xl italic">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl italic">
                 {t("survey.feedbackDesc")}
               </p>
             </div>
 
             <div className="space-y-8">
               {OPEN_FEEDBACK.map((q) => (
-                <div key={q.id} className="space-y-4 p-6 rounded-xl bg-slate-50 border border-slate-200 hover:border-primary/20 transition-all group hover:bg-white shadow-sm hover:shadow-md">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                <div key={q.id} className="space-y-4 p-6 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 hover:border-primary/20 transition-all group hover:bg-white dark:hover:bg-slate-800 shadow-sm hover:shadow-md">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-between">
                     <span>{lang === "th" ? q.textTh : q.textEn}</span>
-                    <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-wider opacity-60 border-slate-300 px-2">
+                    <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-wider opacity-60 border-slate-300 dark:border-slate-700 px-2">
                       {t("common.optional")}
                     </Badge>
                   </Label>
@@ -607,11 +612,11 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
               ))}
             </div>
 
-            <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-4 relative overflow-hidden">
+            <div className="p-6 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center gap-4 relative overflow-hidden">
                <div className="absolute top-0 right-0 p-4 opacity-5">
                   <Heart className="w-20 h-20 text-primary" />
                </div>
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary shrink-0 shadow-sm border border-slate-100">
+              <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center text-primary shrink-0 shadow-sm border border-slate-100 dark:border-slate-700">
                 <Heart className="w-5 h-5 animate-pulse" />
               </div>
               <p className="text-[11px] font-bold text-primary leading-relaxed max-w-sm italic uppercase tracking-wider">
@@ -622,8 +627,8 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
         )}
 
         {/* Navigation Bar */}
-        <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-4">
-          <Button variant="ghost" size="sm" className="h-10 px-6 rounded-lg font-bold uppercase tracking-wider text-[10px] group text-slate-500 hover:bg-white transition-all" onClick={goBack} disabled={step === 0}>
+        <div className="p-6 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+          <Button variant="ghost" size="sm" className="h-10 px-6 rounded-lg font-bold uppercase tracking-wider text-[10px] group text-slate-500 hover:bg-white dark:hover:bg-slate-700 transition-all" onClick={goBack} disabled={step === 0}>
             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
             {t("common.back")}
           </Button>

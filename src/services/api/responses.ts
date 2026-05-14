@@ -70,14 +70,24 @@ export async function getSurveyResponseCount(surveyId: string): Promise<number> 
   return 0;
 }
 
-export async function getSurveyResponses(surveyId: string) {
+export async function getSurveyResponses(surveyId?: string) {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("survey_responses")
       .select("*, response_answers(*)")
-      .eq("survey_id", surveyId)
       .eq("status", "completed");
+    
+    if (surveyId && surveyId !== "all") {
+      query = query.eq("survey_id", surveyId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Supabase error fetching responses:", error);
+    }
     if (!error && data) return data;
-  } catch {}
+  } catch (err) {
+    console.error("Unexpected error in getSurveyResponses:", err);
+  }
   return [];
 }

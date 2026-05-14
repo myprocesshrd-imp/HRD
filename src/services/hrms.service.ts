@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { MOCK_USERS, type MockUser } from "@/lib/mock-data";
+import type { MockUser } from "@/lib/mock-data";
 
 export interface HRMSProfile {
   employeeId: string;
@@ -48,9 +48,7 @@ export async function getHRMSProfile(userId: string): Promise<HRMSProfile> {
       };
     }
   } catch {}
-  const user = MOCK_USERS.find((u) => u.id === userId);
-  if (!user) throw new Error("User not found in HRMS");
-  return toHRMSProfile(user);
+  throw new Error("User not found in HRMS");
 }
 
 export async function getHRMSProfileByEmail(email: string): Promise<HRMSProfile> {
@@ -74,7 +72,5 @@ export async function getHRMSProfileByEmail(email: string): Promise<HRMSProfile>
       };
     }
   } catch {}
-  const user = MOCK_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (!user) throw new Error("User not found in HRMS");
-  return toHRMSProfile(user);
+  throw new Error("User not found in HRMS");
 }

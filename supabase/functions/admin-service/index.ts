@@ -177,6 +177,30 @@ serve(async (req) => {
         break;
       }
 
+      case "DEPARTMENT_CREATE":
+        ({ data: result, error } = await supabaseClient.from("departments").insert([payload]).select().single());
+        break;
+
+      case "DEPARTMENT_UPDATE":
+        ({ data: result, error } = await supabaseClient.from("departments").update(payload.data).eq("id", payload.id).select().single());
+        break;
+
+      case "DEPARTMENT_DELETE":
+        ({ error } = await supabaseClient.from("departments").delete().eq("id", payload.id));
+        break;
+
+      case "BUSINESS_UNIT_CREATE":
+        ({ data: result, error } = await supabaseClient.from("business_units").insert([payload]).select().single());
+        break;
+
+      case "BUSINESS_UNIT_UPDATE":
+        ({ data: result, error } = await supabaseClient.from("business_units").update(payload.data).eq("id", payload.id).select().single());
+        break;
+
+      case "BUSINESS_UNIT_DELETE":
+        ({ error } = await supabaseClient.from("business_units").delete().eq("id", payload.id));
+        break;
+
       default:
         return new Response(JSON.stringify({ error: "Unknown action" }), {
           status: 400,

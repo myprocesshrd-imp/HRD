@@ -74,11 +74,13 @@ export interface Question {
 
 export interface SurveySection {
   id: string;
+  code?: string;
   titleEn: string;
   titleTh: string;
   descEn: string;
   descTh: string;
   questions: Question[];
+  businessUnitId?: string;
 }
 
 export const QUESTION_BANK: SurveySection[] = [
@@ -334,16 +336,16 @@ export const QUESTION_BANK: SurveySection[] = [
       },
       {
         id: "H2", type: "single_select" as const,
-        textEn: "If this year's benefits still don't meet your expectations:",
-        textTh: "หากสวัสดิการของบริษัทในปีนี้ยังไม่ตอบโจทย์ความคาดหวังของคุณมากนัก",
-        descEn: "Measures benefits satisfaction & retention impact",
-        descTh: "วัดผลกระทบของสวัสดิการต่อการคงอยู่",
+        textEn: "If the company cannot pay the 'special compensation' (bonus) as targeted this year:",
+        textTh: "หากปีนี้บริษัทไม่สามารถจ่าย 'ค่าตอบแทนพิเศษ' (โบนัส) ได้ตามเป้าหมาย",
+        descEn: "Measures impact of financial incentives on retention",
+        descTh: "วัดผลกระทบของโบนัสต่อความจงรักภักดี",
         required: true,
         choices: [
-          { value: "a", labelEn: "I am still happy at work because team, work, and organizational culture matter more.", labelTh: "ฉันยังมีความสุขในการทำงาน เพราะปัจจัยด้านทีม งาน และวัฒนธรรมองค์กรมีความสำคัญมากกว่า" },
-          { value: "b", labelEn: "I will continue working and hope to see improvement in benefits in the future.", labelTh: "ฉันยังคงทำงานต่อ และหวังว่าจะเห็นการพัฒนาด้านสวัสดิการในอนาคต" },
-          { value: "c", labelEn: "This affects my motivation and makes me start comparing with other organizations.", labelTh: "สิ่งนี้ส่งผลต่อแรงจูงใจของฉัน และทำให้เริ่มเปรียบเทียบกับองค์กรอื่น" },
-          { value: "d", labelEn: "This significantly impacts my decision to stay with the company.", labelTh: "สิ่งนี้มีผลอย่างมากต่อการตัดสินใจอยู่ต่อกับบริษัทของฉัน" },
+          { value: "a", labelEn: "I understand the situation and am still ready to move forward because the overall benefits are still good.", labelTh: "ฉันเข้าใจสถานการณ์ และยังพร้อมเดินหน้าต่อ เพราะภาพรวมสวัสดิการอื่นๆ ยังอยู่ในเกณฑ์ที่ดี" },
+          { value: "b", labelEn: "I'm a bit disappointed but still loyal and wait to see the recovery in the next year.", labelTh: "ฉันผิดหวังบ้างแต่ยังมีความจงรักภักดี และรอดูการฟื้นตัวในปีถัดไป" },
+          { value: "c", labelEn: "I feel unstable and start looking for new opportunities that offer higher stability.", labelTh: "ฉันรู้สึกไม่มั่นคง และเริ่มมองหาโอกาสใหม่ๆ ที่ให้ความมั่นคงสูงกว่า" },
+          { value: "d", labelEn: "This is a main factor that makes me ready to leave the company immediately.", labelTh: "สิ่งนี้เป็นปัจจัยหลักที่ทำให้ฉันพร้อมจะลาจากบริษัทในทันที" },
         ],
       },
     ],
@@ -524,4 +526,16 @@ export const MOCK_SURVEYS: MockSurvey[] = [
   { id: "s3", titleEn: "Onboarding Feedback", titleTh: "ความคิดเห็นพนักงานใหม่", status: "Draft", surveyType: "identified", startDate: "—", endDate: "—", responses: 0, target: 120, sectionIds: ["A"] },
   { id: "s4", titleEn: "Pulse Survey — Q2 2025 (Anonymous)", titleTh: "Pulse Survey ไตรมาส 2/2568 (ไม่ระบุตัวตน)", status: "Active", surveyType: "anonymous", startDate: "2025-05-01", endDate: "2025-06-15", responses: 234, target: 850, sectionIds: ["A", "C"] },
   { id: "sk1", titleEn: "Employee Engagement Survey SK", titleTh: "แบบสำรวจความผูกพันพนักงาน SK", status: "Active", surveyType: "anonymous", startDate: "2026-05-01", endDate: "2026-07-31", responses: 0, target: 500, sectionIds: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"] },
+  {
+    id: "s6",
+    titleEn: "Engagement Pulse (Question Story)",
+    titleTh: "แบบสำรวจความผูกพัน (เชิงสถานการณ์)",
+    status: "Active",
+    surveyType: "identified",
+    startDate: "2024-05-01",
+    endDate: "2024-05-31",
+    responses: 0,
+    target: 500,
+    sectionIds: ["D", "E", "F", "G", "H", "I", "J"]
+  }
 ];

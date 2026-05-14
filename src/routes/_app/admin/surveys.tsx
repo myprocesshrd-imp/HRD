@@ -40,33 +40,33 @@ function SectionsModal({ sections, sectionIds, lang, onClose }: {
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md rounded-xl p-0 overflow-hidden">
-        <DialogHeader className="p-4 bg-slate-900 text-white">
+      <DialogContent className="sm:max-w-md rounded-xl p-0 overflow-hidden bg-white dark:bg-slate-900 border-none max-h-[90vh] flex flex-col">
+        <DialogHeader className="p-4 bg-slate-900 text-white shrink-0">
            <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
                  <Layers className="w-4 h-4" />
               </div>
               <div>
-                <DialogTitle className="text-base font-bold">Linked Nodes</DialogTitle>
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{resolved.length} Logical Units Mapping</span>
+                 <DialogTitle className="text-lg font-bold">Linked Nodes</DialogTitle>
+                 <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{resolved.length} Logical Units Mapping</span>
               </div>
            </div>
         </DialogHeader>
-        <div className="p-4 bg-white">
-          <ScrollArea className="max-h-[50vh] pr-2">
-            <div className="space-y-2">
+        <div className="p-0 flex-1 overflow-hidden">
+          <ScrollArea className="h-full max-h-[70vh]">
+            <div className="p-4 space-y-2">
               {resolved.map((r) => (
-                <div key={r.id} className="flex items-center justify-between p-3 px-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:border-primary/20 hover:bg-white transition-all group shadow-sm">
+                <div key={r.id} className="flex items-center justify-between p-3 px-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:border-primary/20 dark:hover:border-primary/50 hover:bg-white dark:hover:bg-slate-800 transition-all group shadow-sm">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-primary font-bold text-xs border border-slate-100 shrink-0 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-primary font-bold text-sm border border-slate-100 dark:border-slate-700 shrink-0 shadow-sm">
                       {r.id}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-bold text-slate-900 truncate">{r.title}</div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Registry ID: {r.id}</div>
+                      <div className="text-[15px] font-bold text-slate-900 dark:text-white leading-snug">{r.title}</div>
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Registry ID: {r.id}</div>
                     </div>
                   </div>
-                  <Badge variant="outline" className="h-6 rounded-lg px-3 bg-white text-slate-600 border-slate-200 font-bold text-[10px] uppercase">
+                  <Badge variant="outline" className="h-7 rounded-lg px-3.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-bold text-[11px] uppercase">
                     {r.qCount} Units
                   </Badge>
                 </div>
@@ -180,31 +180,45 @@ function SurveysAdmin() {
     return { total, active, avgResponses };
   }, [surveys]);
 
+  const totalQuestions = useMemo(() => {
+    if (!editing) return 0;
+    return editing.sectionIds.reduce((acc, id) => {
+      const sec = sections.find(s => s.id === id);
+      return acc + (sec?.questions.length || 0);
+    }, 0);
+  }, [editing, sections]);
+
   const columns: ColumnConfig<MockSurvey>[] = [
     {
       key: "titleTh",
-      header: lang === "th" ? "ชื่อแบบสำรวจ" : "Campaign Identifier",
+      header: (
+        <span className="text-slate-900 dark:text-white">
+          {lang === "th" ? "ชื่อแบบสำรวจ" : "Campaign Identifier"}
+        </span>
+      ),
       sortable: true,
       className: "min-w-[250px]",
       render: (s: MockSurvey) => (
-        <div className="flex items-center gap-4 py-2 group/item">
-          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center shrink-0 transition-all shadow-sm">
-             <span className="text-[8px] font-bold text-slate-400 uppercase leading-none tracking-widest">UID</span>
-             <span className="text-xs font-bold text-slate-900 mt-1">{s.id.slice(-4).toUpperCase()}</span>
+        <div className="flex items-center gap-4 py-3 group/item">
+          <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center shrink-0 transition-all shadow-sm">
+             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase leading-none tracking-widest">UID</span>
+             <span className="text-sm font-bold text-slate-900 dark:text-white mt-1.5">{s.id.slice(-4).toUpperCase()}</span>
           </div>
           <div className="flex flex-col min-w-0">
-            <div className="font-bold text-slate-900 text-sm truncate">
+            <div className="font-bold text-slate-900 dark:text-white text-[15px] truncate leading-tight">
               {lang === "th" ? s.titleTh : s.titleEn}
             </div>
-            <div className="flex items-center gap-3 mt-0.5">
-               <Badge variant="outline" className="h-5 px-2 rounded-lg text-[9px] border-primary/20 text-primary font-bold uppercase bg-primary/5">
+            <div className="flex items-center gap-3.5 mt-1.5">
+               <Badge variant="outline" className="h-5.5 px-2.5 rounded-lg text-[10px] border-primary/20 text-primary font-bold uppercase bg-primary/5">
                  {s.surveyType}
                </Badge>
                <button 
                   onClick={() => setSectionModalSurvey(s)}
-                  className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-primary transition-colors flex items-center gap-1.5"
+                  className="text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-primary transition-colors flex items-center gap-2"
                 >
-                 <Layers className="w-3 h-3" /> {s.sectionIds.length} Nodes
+                 <Layers className="w-3.5 h-3.5" /> {s.sectionIds.length} Nodes 
+                 <span className="text-slate-300">/</span>
+                 <span className="text-primary/70">{s.sectionIds.reduce((acc, id) => acc + (sections.find(sec => sec.id === id)?.questions.length || 0), 0)} Units</span>
                </button>
             </div>
           </div>
@@ -213,7 +227,7 @@ function SurveysAdmin() {
     },
     {
       key: "status",
-      header: "Status",
+      header: <span className="text-slate-900 dark:text-white">Status</span>,
       sortable: true,
       className: "w-[120px]",
       render: (s) => (
@@ -231,12 +245,13 @@ function SurveysAdmin() {
           }}
         >
           <SelectTrigger className={cn(
-            "h-9 w-full rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-sm",
-            s.status === "Active" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : 
-            s.status === "Closed" ? "bg-slate-50 text-slate-400 border-slate-100" : "bg-amber-50 text-amber-600 border-amber-100"
+            "h-10 w-full rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm",
+            s.status === "Active" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50" : 
+            s.status === "Closed" ? "bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-700" : 
+            "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/50"
           )}>
-            <div className="flex items-center gap-2">
-              <div className={cn("w-2 h-2 rounded-full", s.status === "Active" ? "bg-emerald-500 animate-pulse" : s.status === "Closed" ? "bg-slate-300" : "bg-amber-500")} />
+            <div className="flex items-center gap-2.5">
+              <div className={cn("w-2.5 h-2.5 rounded-full", s.status === "Active" ? "bg-emerald-500 animate-pulse" : s.status === "Closed" ? "bg-slate-300 dark:bg-slate-600" : "bg-amber-500")} />
               <SelectValue />
             </div>
           </SelectTrigger>
@@ -250,18 +265,18 @@ function SurveysAdmin() {
     },
     {
       key: "responses",
-      header: "Fidelity",
+      header: <span className="text-slate-900 dark:text-white">Fidelity</span>,
       sortable: true,
       className: "w-[160px]",
       render: (s) => {
         const pct = s.target ? Math.round((s.responses / s.target) * 100) : 0;
         return (
-          <div className="space-y-1 py-1 pr-4">
+          <div className="space-y-1.5 py-1 pr-4">
             <div className="flex items-center justify-between">
-               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{s.responses} / {s.target}</span>
-               <span className="text-[9px] font-bold tabular-nums text-slate-600">{pct}%</span>
+               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{s.responses} / {s.target}</span>
+               <span className="text-[11px] font-bold tabular-nums text-slate-600 dark:text-slate-300">{pct}%</span>
             </div>
-            <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+            <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
                <div className={cn("h-full rounded-full transition-all duration-1000", pct >= 100 ? "bg-emerald-500" : "bg-primary")} style={{ width: `${Math.min(100, pct)}%` }} />
             </div>
           </div>
@@ -273,35 +288,35 @@ function SurveysAdmin() {
       header: "",
       className: "text-right w-[140px]",
       render: (s) => (
-        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-2.5">
           <Button 
             variant="outline" size="icon" 
-            className="h-9 w-9 rounded-xl border-slate-200 text-slate-400 hover:text-primary transition-all shadow-sm bg-white"
+            className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-400 hover:text-primary transition-all shadow-sm bg-white dark:bg-slate-800"
             onClick={() => { setEditing({ ...s }); setDialogOpen(true); }}
           >
-            <Pencil className="w-4 h-4" />
+            <Pencil className="w-5 h-5" />
           </Button>
           <Button 
             variant="outline" size="icon" 
-            className="h-9 w-9 rounded-xl border-slate-200 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm bg-white" 
+            className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all shadow-sm bg-white dark:bg-slate-800" 
             onClick={() => setPreviewTarget(s)}
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-5 h-5" />
           </Button>
           <Button 
             variant="outline" size="icon" 
-            className="h-9 w-9 rounded-xl border-slate-200 text-slate-300 hover:text-slate-600 transition-all shadow-sm bg-white"
+            className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-300 hover:text-slate-600 transition-all shadow-sm bg-white dark:bg-slate-800"
             onClick={() => handleClone(s.id)} 
             disabled={saving}
           >
-            <Copy className="w-4 h-4" />
+            <Copy className="w-5 h-5" />
           </Button>
           <Button 
             variant="outline" size="icon" 
-            className="h-9 w-9 rounded-xl border-slate-200 text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all shadow-sm bg-white"
+            className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-rose-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all shadow-sm bg-white dark:bg-slate-800"
             onClick={() => setDeleteTarget(s.id)}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-5 h-5" />
           </Button>
         </div>
       ),
@@ -321,10 +336,10 @@ function SurveysAdmin() {
       {sectionModalSurvey && <SectionsModal sections={sections} sectionIds={sectionModalSurvey.sectionIds} lang={lang} onClose={() => setSectionModalSurvey(null)} />}
       {previewTarget && <PreviewSurveyDialog survey={previewTarget} onClose={() => setPreviewTarget(null)} />}
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Surveys</h1>
-          <p className="text-xs font-medium text-slate-400">
+      <div className="flex items-center justify-between gap-6 pb-2">
+        <div className="space-y-1.5">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Surveys</h1>
+          <p className="text-[15px] font-medium text-slate-400">
             {lang === "th" ? "จัดการแคมเปญแบบสำรวจความผูกพัน" : "Orchestrate engagement campaigns and insights."}
           </p>
         </div>
@@ -333,23 +348,23 @@ function SurveysAdmin() {
             <DialogTrigger asChild>
               <Button 
                 onClick={() => { setEditing({ id: "", titleEn: "", titleTh: "", status: "Draft", surveyType: "identified", startDate: "", endDate: "", responses: 0, target: 0, sectionIds: [] }); }}
-                size="sm"
-                className="h-10 px-6 rounded-xl bg-slate-900 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all"
+                size="lg"
+                className="h-12 px-9 rounded-2xl bg-slate-900 text-white font-bold text-[13px] uppercase tracking-wider shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all"
               >
-                <Plus className="w-4 h-4 mr-2" /> Create Survey
+                <Plus className="w-5 h-5 mr-2.5" /> Create Survey
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl rounded-xl p-0 overflow-hidden bg-white">
+            <DialogContent className="sm:max-w-2xl rounded-xl p-0 overflow-hidden bg-white dark:bg-slate-900 border-none">
               <DialogHeader className="p-4 bg-slate-900 text-white shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
-                    <Binary className="w-4 h-4" />
+                  <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+                    <Binary className="w-5 h-5" />
                   </div>
                   <div>
-                    <DialogTitle className="text-base font-bold">
+                    <DialogTitle className="text-lg font-bold">
                       {editing?.id ? "Modify Campaign" : "New Strategic Campaign"}
                     </DialogTitle>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">System Protocol v2.4</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">System Protocol v2.4</span>
                   </div>
                 </div>
               </DialogHeader>
@@ -358,14 +373,14 @@ function SurveysAdmin() {
                 <ScrollArea className="max-h-[65vh]">
                   <div className="p-5 space-y-5">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-4">
                        <div className="space-y-1.5">
                          <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Title (Thai)</Label>
-                         <Input value={editing.titleTh} onChange={(e) => setEditing({...editing, titleTh: e.target.value})} className="h-9 px-3.5 rounded-lg border-slate-200 text-xs font-bold" />
+                         <Input value={editing.titleTh} onChange={(e) => setEditing({...editing, titleTh: e.target.value})} className="h-10 px-3.5 rounded-lg border-slate-200 text-sm font-bold" />
                        </div>
                        <div className="space-y-1.5">
                          <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Title (English)</Label>
-                         <Input value={editing.titleEn} onChange={(e) => setEditing({...editing, titleEn: e.target.value})} className="h-9 px-3.5 rounded-lg border-slate-200 text-xs font-bold" />
+                         <Input value={editing.titleEn} onChange={(e) => setEditing({...editing, titleEn: e.target.value})} className="h-10 px-3.5 rounded-lg border-slate-200 text-sm font-bold" />
                        </div>
                     </div>
 
@@ -411,9 +426,14 @@ function SurveysAdmin() {
                     </div>
 
                     {/* Content Nodes */}
-                    <div className="space-y-2.5 pt-4 border-t">
-                       <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Linked Content Nodes</Label>
-                       <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-3 pt-4 border-t">
+                      <div className="flex items-center justify-between px-1">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Linked Content Nodes</Label>
+                        <div className="flex items-center gap-2 px-2.5 h-6 rounded-lg bg-primary/10 border border-primary/20">
+                          <span className="text-[10px] font-bold text-primary uppercase">Total: {totalQuestions} Units</span>
+                        </div>
+                      </div>
+                       <div className="grid grid-cols-1 gap-2.5">
                          {sections.map(sec => {
                            const checked = editing.sectionIds.includes(sec.id);
                            return (
@@ -421,21 +441,23 @@ function SurveysAdmin() {
                                 key={sec.id}
                                 onClick={() => toggleSection(sec.id)} 
                                 className={cn(
-                                  "p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 group", 
-                                  checked ? "bg-primary/[0.03] border-primary/30 ring-1 ring-primary/10" : "bg-white border-slate-100 hover:border-slate-200 shadow-sm"
+                                  "p-3.5 rounded-xl border transition-all cursor-pointer flex items-center gap-4 group", 
+                                  checked ? "bg-primary/[0.03] border-primary/30 ring-1 ring-primary/10" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600 shadow-sm"
                                 )}
                               >
                                 <div className={cn(
-                                  "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[9px] shrink-0 border transition-all shadow-sm", 
+                                  "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 border transition-all shadow-sm", 
                                   checked ? "bg-primary text-white border-primary/20" : "bg-slate-50 text-slate-400 border-slate-100"
                                 )}>
                                   {sec.id}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <div className={cn("text-[11px] font-bold truncate", checked ? "text-primary" : "text-slate-900")}>{lang === "th" ? sec.titleTh : sec.titleEn}</div>
-                                  <div className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">{sec.questions.length} Units</div>
+                                  <div className={cn("text-[13px] font-bold leading-snug", checked ? "text-primary" : "text-slate-900")}>{lang === "th" ? sec.titleTh : sec.titleEn}</div>
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">{sec.questions.length} Units</div>
                                 </div>
-                                <Checkbox checked={checked} onCheckedChange={() => toggleSection(sec.id)} className="h-4.5 w-4.5 rounded-md" />
+                                <div className="flex items-center gap-3">
+                                  <Checkbox checked={checked} onCheckedChange={() => toggleSection(sec.id)} className="h-5 w-5 rounded-md" />
+                                </div>
                              </div>
                            )
                          })}
@@ -445,9 +467,9 @@ function SurveysAdmin() {
                 </ScrollArea>
               )}
 
-              <DialogFooter className="p-3 px-5 bg-slate-50 border-t flex justify-end gap-2 shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="px-4 h-8 rounded-lg font-bold text-[10px] text-slate-400 uppercase">Cancel</Button>
-                <Button onClick={handleSave} disabled={saving} size="sm" className="px-6 h-8 rounded-lg bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider">
+              <DialogFooter className="p-4 px-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="px-5 h-9 rounded-xl font-bold text-[11px] text-slate-400 uppercase">Cancel</Button>
+                <Button onClick={handleSave} disabled={saving} size="sm" className="px-7 h-9 rounded-xl bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider">
                    {saving ? "Processing..." : "Sync Campaign"}
                 </Button>
               </DialogFooter>
@@ -457,41 +479,41 @@ function SurveysAdmin() {
       </div>
 
       {/* ── Status Strip ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
          {[
            { label: "Campaigns", val: surveys.length, icon: ClipboardList, color: "text-slate-600", bg: "bg-slate-50" },
            { label: "Deployments", val: surveys.filter(s => s.status === "Active").length, icon: Globe, color: "text-emerald-600", bg: "bg-emerald-50" },
            { label: "Avg Fidelity", val: `${stats.avgResponses}`, icon: Activity, color: "text-indigo-600", bg: "bg-indigo-50" },
            { label: "Security", val: "Verified", icon: Database, color: "text-blue-600", bg: "bg-blue-50" },
          ].map(kpi => (
-           <div key={kpi.label} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm group hover:shadow-md transition-all">
-              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm", kpi.bg, kpi.color)}>
-                <kpi.icon className="w-4 h-4" />
+           <div key={kpi.label} className="flex items-center gap-5 p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm group hover:shadow-md transition-all">
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm", kpi.bg, kpi.color)}>
+                <kpi.icon className="w-5.5 h-5.5" />
               </div>
               <div>
-                 <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{kpi.label}</div>
-                 <div className="text-sm font-bold text-slate-900 tracking-tight leading-tight">{kpi.val}</div>
+                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{kpi.label}</div>
+                 <div className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{kpi.val}</div>
               </div>
            </div>
          ))}
       </div>
 
       {/* ── Registry Table ── */}
-      <Card className="border-none shadow-sm rounded-xl overflow-hidden bg-white border border-slate-100">
-        <div className="px-4 py-2.5 border-b border-slate-50 flex items-center justify-between gap-4 bg-slate-50/40">
-           <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-slate-400 border border-slate-200">
-                <Filter className="w-3 h-3" />
+      <Card className="border-none shadow-sm rounded-xl overflow-hidden bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+        <div className="px-6 py-4 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between gap-4 bg-slate-50/40 dark:bg-slate-800/30">
+           <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <Filter className="w-4.5 h-4.5" />
               </div>
-              <h3 className="text-xs font-bold tracking-tight text-slate-900">Campaign Registry</h3>
+              <h3 className="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white">Campaign Registry</h3>
            </div>
-           <div className="relative flex-1 sm:w-80 max-w-sm">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+           <div className="relative flex-1 sm:w-96 max-w-md">
+              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter campaigns by name or UID..." 
-                className="h-9 pl-10 rounded-xl border-slate-200 bg-white text-xs shadow-none focus:ring-1 focus:ring-primary/10 transition-all" 
+                className="h-11 pl-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[14px] shadow-none focus:ring-1 focus:ring-primary/10 transition-all" 
               />
            </div>
         </div>
@@ -509,8 +531,8 @@ function SurveysAdmin() {
 
       {/* ── Decommission Alert ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-5 text-center flex flex-col items-center gap-4 max-w-[320px]">
-           <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shadow-inner">
+        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-5 text-center flex flex-col items-center gap-4 max-w-[320px] bg-white dark:bg-slate-900">
+           <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shadow-inner">
               <Trash2 className="w-6 h-6" />
            </div>
            <div className="space-y-1">

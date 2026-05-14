@@ -1,23 +1,21 @@
 import { supabase, supabaseAdmin } from "@/lib/supabase";
-import {
-  DEPARTMENTS as MOCK_DEPARTMENTS,
-  BUSINESS_UNITS as MOCK_BUSINESS_UNITS,
-  ENGAGEMENT_BY_DEPT as MOCK_ENGAGEMENT_BY_DEPT,
-} from "@/lib/mock-data";
+import { invokeAdminService } from "./admin-helper";
+
 
 export interface Department {
   id: string;
   name_en: string;
   name_th: string;
   business_unit?: string | null;
+  business_unit_id?: string | null;
 }
 
 export async function getDepartments(): Promise<string[]> {
   try {
     const { data, error } = await supabaseAdmin.from("departments").select("name_en").order("name_en");
-    if (!error && data && data.length > 0) return data.map((d) => d.name_en);
+    if (!error && data && data.length > 0) return data.map((d: { name_en: string }) => d.name_en);
   } catch {}
-  return MOCK_DEPARTMENTS;
+  return [];
 }
 
 export async function getDepartmentsWithId(): Promise<Department[]> {
@@ -25,15 +23,10 @@ export async function getDepartmentsWithId(): Promise<Department[]> {
     const { data, error } = await supabaseAdmin.from("departments").select("*").order("name_en");
     if (!error && data && data.length > 0) return data;
   } catch {}
-  return MOCK_DEPARTMENTS.map((name, i) => ({
-    id: String(i + 1),
-    name_en: name,
-    name_th: name,
-    business_unit: null,
-  }));
+  return [];
 }
 
-export async function getBusinessUnits(): Promise<string[]> {
+export async function getLegacyBusinessUnits(): Promise<string[]> {
   try {
     const { data, error } = await supabaseAdmin
       .from("departments")
@@ -41,25 +34,35 @@ export async function getBusinessUnits(): Promise<string[]> {
       .not("business_unit", "is", null)
       .order("business_unit");
     if (!error && data && data.length > 0) {
-      const units = [...new Set(data.map((d) => d.business_unit as string))];
+      const units = Array.from(new Set<string>(data.map((d: { business_unit: string | null }) => d.business_unit as string)));
       if (units.length > 0) return units;
     }
   } catch {}
-  return MOCK_BUSINESS_UNITS;
+  return [];
 }
 
 
-export async function createDepartment(name: string): Promise<void> {
-  const { error } = await supabaseAdmin.from("departments").insert([{ name_en: name, name_th: name }]);
-  if (error) throw new Error(error.message);
+export async function createDepartment(name: string, buId?: string, buName?: string): Promise<void> {
+  await invokeAdminService("DEPARTMENT_CREATE", { 
+    name_en: name, 
+    name_th: name,
+    business_unit_id: buId || null,
+    business_unit: buName || null
+  });
 }
 
-export async function updateDepartment(oldName: string, newName: string): Promise<void> {
-  const { error } = await supabaseAdmin.from("departments").update({ name_en: newName, name_th: newName }).eq("name_en", oldName);
-  if (error) throw new Error(error.message);
+export async function updateDepartment(id: string, newName: string, buId?: string, buName?: string): Promise<void> {
+  await invokeAdminService("DEPARTMENT_UPDATE", { 
+    id,
+    data: {
+      name_en: newName, 
+      name_th: newName,
+      business_unit_id: buId || null,
+      business_unit: buName || null
+    }
+  });
 }
 
-export async function deleteDepartment(name: string): Promise<void> {
-  const { error } = await supabaseAdmin.from("departments").delete().eq("name_en", name);
-  if (error) throw new Error(error.message);
+export async function deleteDepartment(id: string): Promise<void> {
+  await invokeAdminService("DEPARTMENT_DELETE", { id });
 }

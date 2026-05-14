@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { 
   ShieldCheck, User, Lock, AlertCircle, Loader2, ArrowRight, Sparkles, 
-  Languages, Terminal, Info, Heart, ChevronRight, Clock 
+  Languages, Terminal, Info, Heart, ChevronRight, Clock, ChevronDown 
 } from "lucide-react";
 import { toast } from "sonner";
 import { getLogs, clearLogs } from "@/services/debug";
@@ -41,6 +41,7 @@ function LoginPage() {
   const [showDebug, setShowDebug] = useState(false);
   const [anonSurveys, setAnonSurveys] = useState<MockSurvey[]>([]);
   const [surveysLoading, setSurveysLoading] = useState(true);
+  const [showDemo, setShowDemo] = useState(false);
 
   const [hydrated, setHydrated] = useState(false);
 
@@ -89,17 +90,14 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 selection:bg-primary/10">
+    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 dark:bg-slate-950 selection:bg-primary/10">
       {/* ── Left Panel: Immersive Branding ── */}
       <div className="hidden lg:flex flex-col justify-between p-16 text-white relative overflow-hidden bg-slate-950">
-        {/* Background Image with Overlay */}
-        <div className="absolute inset-0 z-0">
-          <img 
-            src="/Users/delta/.gemini/antigravity/brain/f1ec155d-5d6c-4e44-a014-1d5d560da494/hr_login_hero_1778663093167.png" 
-            alt="HR Tech Hero"
-            className="w-full h-full object-cover opacity-40 scale-105 animate-pulse-slow"
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/80 to-primary/20" />
+        {/* Background Gradient & Animated Shapes */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-indigo-950 via-slate-950 to-slate-950">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] animate-pulse-slow" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse-slow delay-700" />
+          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
         </div>
 
         <div className="relative z-10 flex items-center gap-4 animate-in fade-in slide-in-from-left-8 duration-700">
@@ -108,7 +106,7 @@ function LoginPage() {
           </div>
           <div>
             <div className="font-black text-2xl tracking-tighter">{t("app.name")}</div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-white/80">Professional HR Pulse Suite</div>
+            <div className="text-[11px] font-bold uppercase tracking-widest text-white/60">Enterprise HR Suite</div>
           </div>
         </div>
 
@@ -116,114 +114,78 @@ function LoginPage() {
           <h1 className="text-6xl font-black leading-[1.1] tracking-tighter">
             {lang === "th"
               ? "เปลี่ยนเสียงของพนักงาน ให้เป็นพลังขององค์กร"
-              : "Transform Employee Voice into Growth Potential."}
+              : "Transform Employee Voice into Growth."}
           </h1>
-          <p className="text-xl text-white/80 font-medium leading-relaxed max-w-xl italic">
+          <p className="text-xl text-white/70 font-medium leading-relaxed max-w-xl">
             {lang === "th"
-              ? "แพลตฟอร์มสำรวจระดับองค์กรที่มอบข้อมูลเชิงลึก ความปลอดภัยระดับสูง และการรายงานที่แม่นยำเพื่อการตัดสินใจที่ดีกว่า"
-              : "Enterprise-grade sentiment analysis with rigorous data protection, high-fidelity metrics, and executive-ready reporting."}
+              ? "แพลตฟอร์มสำรวจระดับองค์กรที่มอบข้อมูลเชิงลึก ความปลอดภัยระดับสูง และการรายงานที่แม่นยำ"
+              : "Enterprise-grade sentiment analysis with rigorous data protection and executive-ready reporting."}
           </p>
           
-          <div className="grid grid-cols-3 gap-8 pt-8">
+          <div className="grid grid-cols-3 gap-8 pt-8 border-t border-white/10">
             {[
-              { v: "99.9%", l: lang === "th" ? "ความปลอดภัย" : "Data Security", sub: "AES-256" },
-              { v: "ISO", l: lang === "th" ? "มาตรฐานสากล" : "Certified", sub: "27001" },
-              { v: "Real-time", l: lang === "th" ? "การวิเคราะห์" : "Analytics", sub: "AI Engine" },
+              { v: "99.9%", l: lang === "th" ? "ความปลอดภัย" : "Security", sub: "AES-256" },
+              { v: "Real-time", l: lang === "th" ? "วิเคราะห์" : "Analytics", sub: "AI Powered" },
+              { v: "ISO", l: lang === "th" ? "มาตรฐาน" : "Certified", sub: "27001" },
             ].map((s) => (
-              <div key={s.l} className="space-y-1 group">
-                <div className="text-3xl font-black text-white group-hover:text-primary transition-colors">{s.v}</div>
-                <div className="text-[11px] font-bold uppercase tracking-widest text-white/70">{s.l}</div>
-                <div className="text-[11px] font-bold text-white/50">{s.sub}</div>
+              <div key={s.l} className="space-y-1">
+                <div className="text-2xl font-black text-white">{s.v}</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-white/50">{s.l}</div>
+                <div className="text-[10px] font-medium text-white/30">{s.sub}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="relative z-10 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-white/50 animate-in fade-in duration-1000 delay-500">
+        <div className="relative z-10 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-white/30 animate-in fade-in duration-1000 delay-500">
           <span>© {new Date().getFullYear()} HR Pulse Platform</span>
           <div className="flex gap-6">
             <span className="hover:text-white cursor-pointer transition-colors">Privacy</span>
             <span className="hover:text-white cursor-pointer transition-colors">Security</span>
-            <span className="hover:text-white cursor-pointer transition-colors">System Status</span>
           </div>
         </div>
       </div>
 
       {/* ── Right Panel: Modern Login Form ── */}
-      <div className="flex items-center justify-center p-8 md:p-16 bg-white lg:bg-transparent overflow-y-auto">
-        <div className="w-full max-w-md space-y-10 p-8 animate-in fade-in slide-in-from-right-8 duration-700">
+      <div className="flex items-center justify-center p-8 md:p-16 bg-white dark:bg-slate-900 overflow-y-auto">
+        <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
           
-          {/* Mobile Header */}
-          <div className="flex items-center justify-between lg:hidden">
-             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <span className="font-black tracking-tight text-xl">{t("app.name")}</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-5xl font-black tracking-tighter leading-[0.9]">
-                {t("auth.welcome")}
-              </h1>
+              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 lg:hidden">
+                <ShieldCheck className="w-6 h-6 text-primary" />
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setLang(lang === "th" ? "en" : "th")}
-                className="h-8 rounded-full border border-slate-200 text-[11px] font-bold uppercase tracking-widest gap-2 hover:bg-slate-50"
+                className="h-8 rounded-full border border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-widest gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 ml-auto dark:text-slate-400"
               >
                 <Languages className="w-3.5 h-3.5" />
                 {lang === "th" ? "EN" : "ไทย"}
               </Button>
             </div>
-            <p className="text-lg font-medium text-slate-600 leading-relaxed">{t("auth.subtitle")}</p>
+            <div className="space-y-2">
+              <h1 className="text-5xl font-black tracking-tighter leading-tight text-slate-900 dark:text-white">
+                {t("auth.welcome")}
+              </h1>
+              <p className="text-lg font-medium text-slate-500 dark:text-slate-400">{t("auth.subtitle")}</p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <Alert variant="destructive" className="rounded-2xl bg-rose-50 border-rose-200 text-rose-700 animate-in shake duration-500">
+              <Alert variant="destructive" className="rounded-2xl bg-rose-50 border-rose-100 text-rose-600 animate-in shake duration-500">
                 <AlertCircle className="w-4 h-4" />
                 <AlertDescription className="font-bold">{error}</AlertDescription>
               </Alert>
             )}
 
-            {showDebug && debugLogs.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-xs font-mono space-y-3 shadow-2xl animate-in zoom-in">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px]">
-                    <Terminal className="w-3.5 h-3.5" />
-                    System Exceptions
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDebug(false)}
-                    className="h-6 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white"
-                  >
-                    Dismiss
-                  </Button>
-                </div>
-                <div className="max-h-32 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-white/10">
-                  {debugLogs.map((l, i) => (
-                    <div key={i} className={cn(
-                      "flex gap-3",
-                      l.level === "error" ? "text-rose-400" : "text-slate-400"
-                    )}>
-                      <span className="opacity-30 shrink-0">[{l.time}]</span> 
-                      <span className="break-all">{l.msg}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="employeeCode" className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">HRMS Username</Label>
+                <Label htmlFor="employeeCode" className="text-[13px] font-black uppercase tracking-widest text-slate-500 ml-1">HRMS Username</Label>
                 <div className="relative group">
-                  <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
+                  <User className="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" />
                   <Input
                     id="employeeCode"
                     type="text"
@@ -231,18 +193,15 @@ function LoginPage() {
                     value={employeeCode}
                     onChange={(e) => setEmployeeCode(e.target.value)}
                     placeholder="Somsri_ka"
-                    className="pl-12 h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-primary/20 transition-all font-bold"
+                    className="pl-12 h-16 rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-950 focus:ring-primary/20 transition-all text-lg font-semibold dark:text-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between ml-1">
-                  <Label htmlFor="password" className="text-[11px] font-black uppercase tracking-widest text-slate-600">HRMS Password</Label>
-                  <button type="button" className="text-[11px] font-bold uppercase tracking-widest text-primary/80 hover:text-primary transition-colors">Forgot?</button>
-                </div>
+                <Label htmlFor="password" className="text-[13px] font-black uppercase tracking-widest text-slate-500 ml-1">HRMS Password</Label>
                 <div className="relative group">
-                  <Lock className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
+                  <Lock className="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" />
                   <Input
                     id="password"
                     type="password"
@@ -250,13 +209,13 @@ function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="pl-12 h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-primary/20 transition-all font-bold"
+                    className="pl-12 h-16 rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 focus:bg-white dark:focus:bg-slate-950 focus:ring-primary/20 transition-all text-lg font-semibold dark:text-white"
                   />
                 </div>
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-14 rounded-2xl shadow-xl shadow-primary/20 font-black uppercase tracking-widest text-sm bg-gradient-to-r from-indigo-600 to-primary hover:scale-[1.02] active:scale-95 transition-all group" disabled={loading}>
+            <Button type="submit" className="w-full h-14 rounded-2xl shadow-xl shadow-primary/20 font-black uppercase tracking-widest text-sm bg-slate-900 dark:bg-primary hover:bg-primary dark:hover:bg-primary/90 hover:scale-[1.02] active:scale-95 transition-all group dark:text-white" disabled={loading}>
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                 <div className="flex items-center gap-2">
                   {t("auth.signInBtn")}
@@ -267,57 +226,66 @@ function LoginPage() {
           </form>
 
           {/* Quick Demo Access */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 px-1">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{t("auth.demoTitle")}</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {DEMO.map((d) => (
-                <button
-                  key={d.code}
-                  type="button"
-                  onClick={() => fillDemo(d.code, d.password)}
-                  className="flex flex-col items-start p-4 rounded-2xl border border-slate-100 hover:border-primary/20 hover:bg-slate-50 transition-all text-left group"
-                >
-                  <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2", d.color)}>
-                    {d.role}
-                  </span>
-                  <span className="text-xs font-bold text-slate-900 flex items-center justify-between w-full">
-                    {d.code}
-                    <ArrowRight className="w-3 h-3 text-slate-300 group-hover:text-primary transition-colors" />
-                  </span>
-                </button>
-              ))}
-            </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowDemo((v) => !v)}
+              className="w-full flex items-center gap-3 px-1 group"
+            >
+              <div className="h-px flex-1 bg-slate-100" />
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-600 transition-colors whitespace-nowrap">
+                {t("auth.demoTitle")}
+                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", showDemo && "rotate-180")} />
+              </span>
+              <div className="h-px flex-1 bg-slate-100" />
+            </button>
+
+            {showDemo && (
+              <div className="grid grid-cols-2 gap-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                {DEMO.map((d) => (
+                  <button
+                    key={d.code}
+                    type="button"
+                    onClick={() => fillDemo(d.code, d.password)}
+                    className="flex flex-col items-start p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/20 dark:hover:border-primary/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-left group"
+                  >
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2", d.color)}>
+                      {d.role}
+                    </span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center justify-between w-full">
+                      {d.code}
+                      <ArrowRight className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover:text-primary transition-colors" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Anonymous surveys */}
           {!surveysLoading && anonSurveys.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-primary px-1">
+            <div className="space-y-3 pt-6 border-t border-slate-100">
+               <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-primary px-1">
                 <Sparkles className="w-4 h-4" />
                 {lang === "th" ? "แบบสำรวจสาธารณะ" : "Public Campaigns"}
               </div>
               {anonSurveys.map((s) => (
                 <Card
                   key={s.id}
-                  className="group p-5 border-none bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer rounded-2xl relative overflow-hidden"
+                  className="group p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/50 hover:border-primary/20 dark:hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer rounded-2xl relative overflow-hidden"
                   onClick={() => navigate({ to: "/survey/public/$id", params: { id: s.id } })}
                 >
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-sm font-black text-slate-900 truncate group-hover:text-primary transition-colors">
+                      <div className="text-sm font-black text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">
                         {lang === "th" ? s.titleTh : s.titleEn}
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500 mt-1 uppercase tracking-tight">
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {s.endDate}</span>
-                        <span className="flex items-center gap-1 text-emerald-700"><Info className="w-3.5 h-3.5" /> Public</span>
+                      <div className="flex items-center gap-3 text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" /> {s.endDate}</span>
+                        <span className="flex items-center gap-1 text-emerald-600/70"><Info className="w-3.5 h-3.5" /> Anonymous</span>
                       </div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-primary shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all shrink-0">
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>
@@ -326,14 +294,14 @@ function LoginPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-8 pt-6 opacity-60">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-600">
-              <ShieldCheck className="w-4 h-4 text-primary" />
-              AES-256 SECURED
+          <div className="flex items-center justify-center gap-8 pt-4 opacity-40">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              SECURED
             </div>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-600">
-              <Heart className="w-4 h-4 text-rose-500" />
-              GDPR COMPLIANT
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+              <Heart className="w-3.5 h-3.5 text-rose-500" />
+              HR TRUSTED
             </div>
           </div>
 

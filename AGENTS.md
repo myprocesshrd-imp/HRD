@@ -122,6 +122,11 @@ SurveySection[] = [
 - [x] Mobile responsive (Sheet drawer, hamburger button)
 - [x] Role-based nav links
 
+## Supabase Project
+- **Project Name**: HRD Survey
+- **URL**: https://zrjrcdnqkobwkqdgzkix.supabase.co
+- **Ref**: zrjrcdnqkobwkqdgzkix
+
 ## Next Steps (Phase 5)
 - Service abstraction layer + React Query integration
 - Real Supabase backend

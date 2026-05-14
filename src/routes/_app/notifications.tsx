@@ -126,43 +126,43 @@ function NotificationsPage() {
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       
       {/* ── Compact Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Signal Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Monitoring critical organizational pulse signals.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Signal Dashboard</h1>
+          <p className="text-[15px] font-medium text-slate-400">Monitoring critical organizational pulse signals.</p>
         </div>
-        <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" className="h-9 px-4 rounded-lg font-bold text-xs gap-2 border-slate-200" onClick={markAllRead}>
-              <CheckCircle2 className="w-4 h-4 text-slate-400" /> Acknowledge All
+        <div className="flex items-center gap-3">
+           <Button variant="outline" className="h-10 px-5 rounded-xl font-bold text-[11px] uppercase gap-2.5 border-slate-200 shadow-sm" onClick={markAllRead}>
+              <CheckCircle2 className="w-4.5 h-4.5 text-slate-400" /> Acknowledge All
            </Button>
-           <Button size="sm" className="h-9 px-4 rounded-lg bg-slate-900 text-white font-bold text-xs uppercase tracking-wider">
+           <Button className="h-10 px-6 rounded-xl bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider shadow-lg shadow-slate-900/10">
               Stream Settings
            </Button>
         </div>
       </div>
 
       {/* ── Tactical Search & Filters ── */}
-      <div className="flex flex-col lg:flex-row gap-3 p-2 bg-slate-50 border border-slate-100 rounded-xl">
+      <div className="flex flex-col lg:flex-row gap-4 p-3 bg-slate-50 border border-slate-100 rounded-2xl">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
           <Input 
             placeholder="Search signals..." 
-            className="h-10 pl-9 pr-4 rounded-lg border-slate-200 bg-white text-sm font-medium focus-visible:ring-offset-0 focus-visible:ring-primary/20"
+            className="h-11 pl-11 pr-4 rounded-xl border-slate-200 bg-white text-[15px] font-medium focus-visible:ring-offset-0 focus-visible:ring-primary/20 shadow-sm transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Tabs value={filter} onValueChange={setFilter} className="w-full lg:w-auto">
-          <TabsList className="bg-white/50 h-10 p-1 rounded-lg border border-slate-200 gap-1 w-full">
-            <TabsTrigger value="all" className="h-8 px-4 rounded-md data-[state=active]:bg-slate-900 data-[state=active]:text-white bg-transparent text-slate-500 font-bold uppercase tracking-wider text-[10px] transition-all">Global Feed</TabsTrigger>
-            <TabsTrigger value="unread" className="h-8 px-4 rounded-md data-[state=active]:bg-slate-900 data-[state=active]:text-white bg-transparent text-slate-500 font-bold uppercase tracking-wider text-[10px] transition-all">Active Nodes</TabsTrigger>
-            <TabsTrigger value="important" className="h-8 px-4 rounded-md data-[state=active]:bg-slate-900 data-[state=active]:text-white bg-transparent text-slate-500 font-bold uppercase tracking-wider text-[10px] transition-all">Priority Signals</TabsTrigger>
+          <TabsList className="bg-white/50 h-11 p-1 rounded-xl border border-slate-200 gap-1 w-full">
+            <TabsTrigger value="all" className="h-9 px-6 rounded-lg data-[state=active]:bg-slate-900 data-[state=active]:text-white bg-transparent text-slate-500 font-bold uppercase tracking-wider text-[11px] transition-all">Global Feed</TabsTrigger>
+            <TabsTrigger value="unread" className="h-9 px-6 rounded-lg data-[state=active]:bg-slate-900 data-[state=active]:text-white bg-transparent text-slate-500 font-bold uppercase tracking-wider text-[11px] transition-all">Active Nodes</TabsTrigger>
+            <TabsTrigger value="important" className="h-9 px-6 rounded-lg data-[state=active]:bg-slate-900 data-[state=active]:text-white bg-transparent text-slate-500 font-bold uppercase tracking-wider text-[11px] transition-all">Priority Signals</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
       {/* ── Intelligence Feed ── */}
-      <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden">
+      <Card className="border-slate-100 shadow-sm rounded-2xl overflow-hidden">
         <CardContent className="p-0">
           {filtered.length === 0 ? (
             <div className="py-20 text-center space-y-4">
@@ -192,7 +192,7 @@ function NotificationsPage() {
 
                   {/* Icon Node */}
                   <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
+                    "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border shadow-sm",
                     getTypeColor(n.type)
                   )}>
                     {getTypeIcon(n.type)}
@@ -201,36 +201,36 @@ function NotificationsPage() {
                   {/* Intelligence Content */}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-start justify-between gap-4">
-                       <div className="space-y-0.5 min-w-0">
-                          <div className="flex items-center gap-3">
-                             <h4 className={cn(
-                               "text-sm tracking-tight truncate",
-                               n.unread ? "font-bold text-slate-900" : "font-semibold text-slate-500"
-                             )}>
-                               {lang === "th" ? n.titleTh : n.titleEn}
-                             </h4>
-                             {n.unread && (
-                                <Badge className="h-5 px-2 rounded-md border-none text-[8px] font-bold uppercase tracking-wider bg-primary text-white shadow-sm">NEW</Badge>
-                             )}
-                          </div>
-                          <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-1 font-medium italic">
-                             {lang === "th" ? n.descTh : n.descEn}
-                          </p>
-                       </div>
-                       <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md">
-                            <Clock className="w-3 h-3" />
-                            {n.time.toUpperCase()}
-                          </span>
-                       </div>
+                        <div className="space-y-1 min-w-0">
+                           <div className="flex items-center gap-4">
+                              <h4 className={cn(
+                                "text-[15px] tracking-tight truncate",
+                                n.unread ? "font-bold text-slate-900" : "font-semibold text-slate-500"
+                              )}>
+                                {lang === "th" ? n.titleTh : n.titleEn}
+                              </h4>
+                              {n.unread && (
+                                 <Badge className="h-6 px-2.5 rounded-lg border-none text-[9px] font-bold uppercase tracking-wider bg-primary text-white shadow-sm">NEW</Badge>
+                              )}
+                           </div>
+                           <p className="text-sm text-slate-500 leading-relaxed line-clamp-1 font-medium italic">
+                              {lang === "th" ? n.descTh : n.descEn}
+                           </p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                             <Clock className="w-3.5 h-3.5" />
+                             {n.time.toUpperCase()}
+                           </span>
+                        </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 pt-2 opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0">
-                      <Button variant="link" className="p-0 h-auto text-[9px] font-bold uppercase tracking-widest text-primary gap-1.5 hover:no-underline">
-                        Access Intel <ChevronRight className="w-3 h-3" />
+                    <div className="flex items-center gap-6 pt-3 opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0">
+                      <Button variant="link" className="p-0 h-auto text-[10px] font-bold uppercase tracking-widest text-primary gap-2 hover:no-underline">
+                        Access Intel <ChevronRight className="w-3.5 h-3.5" />
                       </Button>
-                      <button className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-1.5">
-                        <Trash2 className="w-3 h-3" /> Decommission
+                      <button className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-2">
+                        <Trash2 className="w-3.5 h-3.5" /> Decommission
                       </button>
                     </div>
                   </div>
@@ -242,21 +242,21 @@ function NotificationsPage() {
       </Card>
 
       {/* ── Compact Information Strip ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-slate-900 text-white relative overflow-hidden shadow-md">
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-10 h-10 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10">
-            <Info className="w-5 h-5 text-primary" />
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-8 p-8 rounded-2xl bg-slate-900 text-white relative overflow-hidden shadow-xl">
+        <div className="flex items-center gap-5 relative z-10">
+          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10">
+            <Info className="w-6 h-6 text-primary" />
           </div>
-          <div className="space-y-0.5">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Persistence Protocol</div>
-            <div className="text-sm font-bold tracking-tight">Nodes older than 90D are auto-decommissioned.</div>
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Persistence Protocol</div>
+            <div className="text-base font-bold tracking-tight text-white">Nodes older than 90D are auto-decommissioned.</div>
           </div>
         </div>
         <div className="flex items-center gap-4 relative z-10">
-           <Button variant="ghost" className="h-9 px-4 rounded-lg font-bold text-[9px] uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+           <Button variant="ghost" className="h-10 px-5 rounded-xl font-bold text-[10px] uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 transition-all">
              Retention Policy
            </Button>
-           <Button className="h-9 px-6 rounded-lg font-bold text-[9px] uppercase tracking-widest bg-white text-slate-900 hover:bg-primary hover:text-white transition-all shadow-xl">
+           <Button className="h-10 px-8 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-white text-slate-900 hover:bg-primary hover:text-white transition-all shadow-2xl">
              Configure Feed
            </Button>
         </div>

@@ -1,13 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { invokeAdminService } from "./admin-helper";
-import {
-  MOCK_SURVEYS as MOCK_SURVEYS_DATA,
-  type MockSurvey,
-} from "@/lib/mock-data";
-import { getSurveySections as getMockSections } from "@/lib/mock-data";
-import type { SurveySection } from "@/lib/mock-data";
+import type { MockSurvey, SurveySection } from "@/lib/mock-data";
 
-export type { MockSurvey };
+export type { MockSurvey, SurveySection };
 export type SurveyStatus = "Active" | "Closed" | "Draft";
 
 interface SupabaseSurvey {
@@ -19,6 +14,8 @@ interface SupabaseSurvey {
   start_date: string | null;
   end_date: string | null;
   target_responses: number;
+  survey_sections?: { section_id: string; sections: { code: string } }[];
+  survey_responses?: { status: string }[];
 }
 
 function mapSupabaseSurvey(s: SupabaseSurvey): MockSurvey {
@@ -26,7 +23,7 @@ function mapSupabaseSurvey(s: SupabaseSurvey): MockSurvey {
     id: s.id,
     titleEn: s.title_en,
     titleTh: s.title_th,
-    status: s.status as MockSurvey["status"],
+    status: (s.status.charAt(0).toUpperCase() + s.status.slice(1)) as MockSurvey["status"],
     surveyType: s.survey_type as MockSurvey["surveyType"],
     startDate: s.start_date ?? "—",
     endDate: s.end_date ?? "—",
@@ -48,14 +45,14 @@ export async function getSurveys(): Promise<MockSurvey[]> {
       .order("created_at", { ascending: false });
     
     if (!error && data && data.length > 0) {
-      return data.map((s) => ({
+      return data.map((s: SupabaseSurvey) => ({
         ...mapSupabaseSurvey(s),
         responses: s.survey_responses?.filter((r: any) => r.status === "completed").length || 0,
         sectionIds: s.survey_sections?.map((ss: Record<string, unknown>) => (ss.sections as { code?: string } | undefined)?.code ?? (ss.section_id as string)) ?? [],
       }));
     }
   } catch {}
-  return MOCK_SURVEYS_DATA;
+  return [];
 }
 
 export async function getSurvey(id: string): Promise<MockSurvey | undefined> {
@@ -78,7 +75,30 @@ export async function getSurvey(id: string): Promise<MockSurvey | undefined> {
       };
     }
   } catch {}
-  return MOCK_SURVEYS_DATA.find((s) => s.id === id);
+  return undefined;
+}
+
+
+export async function getSections(): Promise<SurveySection[]> {
+  try {
+    const { data, error } = await supabase
+      .from("sections")
+      .select("*")
+      .order("sort_order");
+    
+    if (!error && data) {
+      return data.map((s: any) => ({
+        id: s.code,
+        code: s.code,
+        titleEn: s.title_en,
+        titleTh: s.title_th,
+        descEn: s.desc_en ?? "",
+        descTh: s.desc_th ?? "",
+        questions: [],
+      }));
+    }
+  } catch {}
+  return [];
 }
 
 
@@ -107,7 +127,7 @@ export async function getSurveySections(surveyId: string): Promise<SurveySection
           titleTh: s.title_th,
           descEn: s.desc_en ?? "",
           descTh: s.desc_th ?? "",
-          questions: (questions ?? []).map((q) => ({
+          questions: (questions ?? []).map((q: any) => ({
             id: q.id,
             type: q.type,
             textEn: q.text_en,
@@ -120,16 +140,19 @@ export async function getSurveySections(surveyId: string): Promise<SurveySection
             maxValue: q.max_value ?? undefined,
             minChoices: q.min_choices ?? undefined,
             maxChoices: q.max_choices ?? undefined,
-            choices: q.question_choices?.map((c: { value: string; label_en: string; label_th: string }) => ({
+            choices: q.question_choices?.map((c: any) => ({
               value: c.value,
               labelEn: c.label_en,
-              labelTh: c.label_th,
+              labelTh: c.label_th
             })) ?? undefined,
-            rows: q.matrix_rows?.map((r: { label_en: string; label_th: string }) => ({ textEn: r.label_en, textTh: r.label_th })) ?? undefined,
-            columns: q.matrix_columns?.map((c: { value: string; label_en: string; label_th: string }) => ({
+            rows: q.matrix_rows?.map((r: any) => ({
+              textEn: r.label_en,
+              textTh: r.label_th
+            })) ?? undefined,
+            columns: q.matrix_columns?.map((c: any) => ({
               value: c.value,
               labelEn: c.label_en,
-              labelTh: c.label_th,
+              labelTh: c.label_th
             })) ?? undefined,
           })),
         });
@@ -137,7 +160,7 @@ export async function getSurveySections(surveyId: string): Promise<SurveySection
       if (result.length > 0) return result;
     }
   } catch {}
-  return getMockSections(surveyId);
+  return [];
 }
 
 export const OPEN_FEEDBACK = [
@@ -153,7 +176,7 @@ async function resolveSectionCodes(codes: string[]): Promise<string[]> {
     .select("id, code")
     .in("code", codes);
   if (!sections) return [];
-  const map = new Map(sections.map((s) => [s.code, s.id]));
+  const map = new Map(sections.map((s: { id: string; code: string }) => [s.code, s.id]));
   return codes.map((code) => map.get(code)).filter(Boolean) as string[];
 }
 
@@ -167,13 +190,14 @@ export async function createSurvey(data: {
   target: number;
   sectionIds: string[];
 }): Promise<string> {
+  const sanitizeDate = (d?: string) => (d === "—" || !d ? null : d);
   const result = await invokeAdminService("SURVEY_CREATE", {
     title_en: data.titleEn,
     title_th: data.titleTh,
-    status: data.status,
+    status: data.status.toLowerCase(),
     survey_type: data.surveyType,
-    start_date: data.startDate,
-    end_date: data.endDate,
+    start_date: sanitizeDate(data.startDate),
+    end_date: sanitizeDate(data.endDate),
     target_responses: data.target,
     section_ids: data.sectionIds, // Handled inside Edge Function
   });
@@ -190,14 +214,16 @@ export async function updateSurvey(id: string, data: Partial<{
   target: number;
   sectionIds: string[];
 }>): Promise<void> {
+  const sanitizeDate = (d?: string) => (d === "—" || !d ? null : d);
+
   await invokeAdminService("SURVEY_UPDATE", {
     id,
     title_en: data.titleEn,
     title_th: data.titleTh,
-    status: data.status,
+    status: data.status?.toLowerCase(),
     survey_type: data.surveyType,
-    start_date: data.startDate,
-    end_date: data.endDate,
+    start_date: sanitizeDate(data.startDate),
+    end_date: sanitizeDate(data.endDate),
     target_responses: data.target,
     section_ids: data.sectionIds,
   });

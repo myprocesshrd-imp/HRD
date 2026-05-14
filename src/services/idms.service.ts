@@ -66,43 +66,41 @@ export async function idmsLogin(
     if (!loginRes.ok) {
       const text = await loginRes.text();
       pushLog("warn",  "[IDMS] Login failed:", loginRes.status, text);
-      // Don't fall through — try next method
-      return null;
-    }
-
-    const loginData = await loginRes.json();
-    pushLog("log","[IDMS] Login response body:", loginData);
-
-    if (loginData.Result === "OK" && loginData.EmpId) {
-      pushLog("log","[IDMS] Login OK, EmpId:", loginData.EmpId);
-
-      const profileRes = await fetch(
-        `${IDMS_BASE}/hrms/employee/${loginData.EmpId}`,
-        { headers: { Authorization: `Bearer ${loginData.Token}` } }
-      );
-
-      if (!profileRes.ok) {
-        pushLog("warn",  "[IDMS] Profile fetch failed:", profileRes.status);
-        return null;
-      }
-
-      const profileData = await profileRes.json();
-      pushLog("log","[IDMS] Profile response:", profileData);
-
-      const emp: IDMSProfile =
-        profileData?.data?.employee ?? profileData?.employee ?? profileData;
-
-      if (emp?.ID_Emp) {
-        pushLog("log","[IDMS] Profile matched, syncing to Supabase...");
-        const result = mapIDMSToUser(emp, employeeCode);
-        await syncUserToSupabase(emp, result);
-        pushLog("log","[IDMS] Sync complete. Role:", result.role);
-        return result;
-      } else {
-        pushLog("warn",  "[IDMS] No ID_Emp in profile response");
-      }
+      // Fall through to Supabase
     } else {
-      pushLog("warn",  "[IDMS] Login Result not OK:", loginData);
+      const loginData = await loginRes.json();
+      pushLog("log","[IDMS] Login response body:", loginData);
+
+      if (loginData.Result === "OK" && loginData.EmpId) {
+        pushLog("log","[IDMS] Login OK, EmpId:", loginData.EmpId);
+
+        const profileRes = await fetch(
+          `${IDMS_BASE}/hrms/employee/${loginData.EmpId}`,
+          { headers: { Authorization: `Bearer ${loginData.Token}` } }
+        );
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          pushLog("log","[IDMS] Profile response:", profileData);
+
+          const emp: IDMSProfile =
+            profileData?.data?.employee ?? profileData?.employee ?? profileData;
+
+          if (emp?.ID_Emp) {
+            pushLog("log","[IDMS] Profile matched, syncing to Supabase...");
+            const result = mapIDMSToUser(emp, employeeCode);
+            await syncUserToSupabase(emp, result);
+            pushLog("log","[IDMS] Sync complete. Role:", result.role);
+            return result;
+          } else {
+            pushLog("warn",  "[IDMS] No ID_Emp in profile response");
+          }
+        } else {
+          pushLog("warn",  "[IDMS] Profile fetch failed:", profileRes.status);
+        }
+      } else {
+        pushLog("warn",  "[IDMS] Login Result not OK:", loginData);
+      }
     }
   } catch (err) {
     pushLog("error", "[IDMS] API error:", err);

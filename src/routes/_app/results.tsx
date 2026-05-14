@@ -132,100 +132,98 @@ function ResultsPage() {
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       
       {/* ── Compact Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Intelligence Command</h1>
-          <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Intelligence Command</h1>
+          <p className="text-[15px] font-medium text-slate-400">
             {lang === "th" ? "วิเคราะห์ข้อมูลความผูกพันและประสิทธิภาพเชิงลึก" : "Strategic engagement and performance insights."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" className="h-9 px-4 rounded-lg font-bold text-xs gap-2">
-              <Share2 className="w-4 h-4 text-slate-400" /> Share
+        <div className="flex items-center gap-3">
+           <Button variant="outline" className="h-10 px-5 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 font-bold text-[11px] uppercase gap-2.5 shadow-sm">
+              <Share2 className="w-4.5 h-4.5 text-slate-400" /> Share
            </Button>
-           <Button size="sm" className="h-9 px-4 rounded-lg bg-slate-900 text-white font-bold text-xs uppercase tracking-wider">
-              <Download className="w-4 h-4 mr-2" /> Export Protocol
+           <Button className="h-10 px-6 rounded-xl bg-slate-900 dark:bg-primary text-white font-bold text-[11px] uppercase tracking-wider shadow-lg shadow-slate-900/10 dark:shadow-primary/10">
+              <Download className="w-4.5 h-4.5 mr-2" /> Export Protocol
            </Button>
         </div>
       </div>
 
       {/* ── Contextual Controls ── */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-         <div className="md:col-span-4 p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex items-center gap-4">
-            <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary shrink-0">
-               <Layers className="w-4 h-4" />
+         <div className="md:col-span-4 p-4 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0 shadow-sm border border-primary/5">
+               <Layers className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-               <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">Active Campaign</Label>
+               <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Active Campaign</Label>
                <Select value={selectedSurvey} onValueChange={handleSurveyChange}>
-                  <SelectTrigger className="h-8 p-0 border-none bg-transparent shadow-none font-bold text-sm focus:ring-0">
+                  <SelectTrigger className="h-7 p-0 border-none bg-transparent shadow-none font-bold text-[15px] focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-lg shadow-xl p-1">
+                  <SelectContent className="rounded-xl shadow-2xl p-1.5 border-slate-100 dark:border-slate-800 dark:bg-slate-900">
                     {surveys.map((s) => (
-                      <SelectItem key={s.id} value={s.id} className="h-9 rounded-md text-xs font-semibold">
+                      <SelectItem key={s.id} value={s.id} className="h-10 rounded-lg text-sm font-semibold">
                         {lang === "th" ? s.titleTh : s.titleEn}
                       </SelectItem>
                     ))}
                   </SelectContent>
                </Select>
             </div>
-         </div>
-
-         <div className="md:col-span-4 p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex items-center gap-4">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-               <Building2 className="w-4 h-4" />
+          </div>
+          <div className="md:col-span-4 p-4 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm border border-indigo-100/50 dark:border-indigo-900/50">
+               <Building2 className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-               <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">Topology Scope</Label>
+               <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Topology Scope</Label>
                <Select value={filterDept} onValueChange={setFilterDept}>
-                  <SelectTrigger className="h-8 p-0 border-none bg-transparent shadow-none font-bold text-sm focus:ring-0">
+                  <SelectTrigger className="h-7 p-0 border-none bg-transparent shadow-none font-bold text-[15px] focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-lg shadow-xl p-1">
-                    <SelectItem value="all" className="h-9 rounded-md text-xs font-semibold">Global Structure</SelectItem>
-                    {departments.map((d) => <SelectItem key={d} value={d} className="h-9 rounded-md text-xs font-semibold">{d}</SelectItem>)}
+                  <SelectContent className="rounded-xl shadow-2xl p-1.5 border-slate-100 dark:border-slate-800 dark:bg-slate-900">
+                    <SelectItem value="all" className="h-10 rounded-lg text-sm font-semibold">Global Structure</SelectItem>
+                    {departments.map((d) => <SelectItem key={d} value={d} className="h-10 rounded-lg text-sm font-semibold">{d}</SelectItem>)}
                   </SelectContent>
                </Select>
             </div>
-         </div>
-
-         <div className="md:col-span-4 flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl shadow-inner">
-            <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-400 border border-slate-100">
-                  <Database className="w-4 h-4" />
+          </div>
+          <div className="md:col-span-4 flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-inner">
+            <div className="flex items-center gap-4">
+               <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-100 dark:border-slate-700 shadow-sm">
+                  <Database className="w-5 h-5" />
                </div>
                <div>
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Total Samples</div>
-                  <div className="text-sm font-bold text-slate-900 tracking-tight">{stats.totalResponses} Valid Packets</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Total Samples</div>
+                  <div className="text-[15px] font-bold text-slate-900 dark:text-white tracking-tight">{stats.totalResponses} Valid Packets</div>
                </div>
             </div>
             <Badge variant="outline" className={cn(
-              "h-6 rounded-lg px-3 font-bold uppercase tracking-wider text-[9px] border-none",
+              "h-7 rounded-lg px-3.5 font-bold uppercase tracking-wider text-[10px] border-none shadow-sm",
               survey?.status === "Active" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"
             )}>
               {survey?.status === "Active" ? "LIVE" : "ARCHIVED"}
             </Badge>
-         </div>
+          </div>
       </div>
 
       {/* ── Status Strip ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
          {[
            { label: "Engagement Index", value: stats.avg.toFixed(2), icon: Zap, color: "text-primary", bg: "bg-primary/5", sub: "+0.4 vs Prev" },
            { label: "Compliance Rate", value: `${stats.participation}%`, icon: Target, color: "text-emerald-600", bg: "bg-emerald-50", sub: "98% Fidelity" },
            { label: "Signal Density", value: "S-Rank", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50", sub: "Integrity Verified" },
            { label: "Structural Risk", value: "Minimal", icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50", sub: "Safety Cleared" },
          ].map(kpi => (
-           <div key={kpi.label} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
-              <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", kpi.bg, kpi.color)}>
-                <kpi.icon className="w-4.5 h-4.5" />
+           <div key={kpi.label} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+              <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm", kpi.bg, kpi.color, "dark:bg-slate-800 dark:border dark:border-slate-700")}>
+                <kpi.icon className="w-5.5 h-5.5" />
               </div>
               <div>
-                 <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{kpi.label}</div>
+                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{kpi.label}</div>
                  <div className="flex items-baseline gap-2">
-                    <div className="text-lg font-bold text-slate-900 leading-tight">{kpi.value}</div>
-                    <div className="text-[8px] font-medium text-slate-400 uppercase">{kpi.sub}</div>
+                    <div className="text-[20px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">{kpi.value}</div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase">{kpi.sub}</div>
                  </div>
               </div>
            </div>
@@ -234,20 +232,20 @@ function ResultsPage() {
 
       {/* ── Core Visualization ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <Card className="lg:col-span-8 border-slate-100 shadow-sm rounded-xl overflow-hidden">
-          <CardHeader className="px-5 py-4 border-b flex flex-row items-center justify-between bg-slate-50/50">
-             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-primary">
-                   <TrendingUp className="w-4 h-4" />
+        <Card className="lg:col-span-8 border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
+          <CardHeader className="px-6 py-5 border-b dark:border-slate-800 flex flex-row items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+             <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary shadow-sm">
+                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div>
-                   <CardTitle className="text-sm font-bold tracking-tight">Executive Pulse Evolution</CardTitle>
-                   <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Macro Engagement Metrics</CardDescription>
+                   <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Executive Pulse Evolution</CardTitle>
+                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Macro Engagement Metrics</CardDescription>
                 </div>
              </div>
-             <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400"><History className="w-3.5 h-3.5" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400"><Printer className="w-3.5 h-3.5" /></Button>
+             <div className="flex gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><History className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><Printer className="w-4 h-4" /></Button>
              </div>
           </CardHeader>
           <CardContent className="p-5 h-[300px]">
@@ -263,7 +261,7 @@ function ResultsPage() {
                   <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="period" stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
                   <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} itemStyle={{ color: "hsl(var(--foreground))" }} />
                   <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={3} fill="url(#colorScoreResults)" strokeLinecap="round" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -271,15 +269,15 @@ function ResultsPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-4 border-slate-100 shadow-sm rounded-xl overflow-hidden bg-slate-900 text-white">
-          <CardHeader className="px-5 py-4 pb-0">
-             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-primary">
-                   <Compass className="w-4 h-4" />
+        <Card className="lg:col-span-4 border-slate-100 shadow-sm rounded-2xl overflow-hidden bg-slate-900 text-white">
+          <CardHeader className="px-6 py-5 pb-0">
+             <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-primary shadow-sm">
+                   <Compass className="w-5 h-5" />
                 </div>
                 <div>
-                   <CardTitle className="text-sm font-bold tracking-tight text-white">Stability Matrix</CardTitle>
-                   <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Cross-Category Radar</CardDescription>
+                   <CardTitle className="text-base font-bold tracking-tight text-white">Stability Matrix</CardTitle>
+                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">Cross-Category Radar</CardDescription>
                 </div>
              </div>
           </CardHeader>
@@ -298,15 +296,15 @@ function ResultsPage() {
         </Card>
       </div>
 
-      <Card className="border-slate-100 shadow-sm rounded-xl overflow-hidden">
-        <CardHeader className="px-5 py-4 bg-slate-50/50 border-b">
-           <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-emerald-600 shadow-sm">
-                 <Building2 className="w-4 h-4" />
+      <Card className="border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
+        <CardHeader className="px-6 py-5 bg-slate-50/50 dark:bg-slate-800/30 border-b dark:border-slate-800">
+           <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-emerald-600 shadow-sm">
+                 <Building2 className="w-5 h-5" />
               </div>
               <div>
-                 <CardTitle className="text-sm font-bold tracking-tight">Cross-Sectional Dynamics</CardTitle>
-                 <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Inter-category Comparison</CardDescription>
+                 <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Cross-Sectional Dynamics</CardTitle>
+                 <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Inter-category Comparison</CardDescription>
               </div>
            </div>
         </CardHeader>
@@ -317,7 +315,7 @@ function ResultsPage() {
                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                  <XAxis dataKey="dept" stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
                  <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
-                 <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} />
+                 <Tooltip cursor={{ fill: "rgba(255,255,255,0.05)" }} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} itemStyle={{ color: "hsl(var(--foreground))" }} />
                  <Bar dataKey="score" radius={[4, 4, 4, 4]} barSize={40}>
                     {filteredByDept.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -331,14 +329,14 @@ function ResultsPage() {
 
       {/* ── Sentiment & Logic Nodes ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-         <div className="p-5 bg-white border border-slate-100 rounded-xl shadow-sm space-y-4">
+         <div className="p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl shadow-sm space-y-4">
             <div className="flex items-center gap-3">
-               <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+               <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <Sparkles className="w-5 h-5" />
                </div>
                <div>
                   <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Strategic Asset</div>
-                  <div className="text-sm font-bold text-slate-900 truncate">{categoryScores[0]?.category}</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{categoryScores[0]?.category}</div>
                </div>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed italic">
@@ -346,14 +344,14 @@ function ResultsPage() {
             </p>
          </div>
 
-         <div className="p-5 bg-white border border-slate-100 rounded-xl shadow-sm space-y-4">
+         <div className="p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl shadow-sm space-y-4">
             <div className="flex items-center gap-3">
-               <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+               <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                   <Lightbulb className="w-5 h-5" />
                </div>
                <div>
                   <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Opportunity Window</div>
-                  <div className="text-sm font-bold text-slate-900 truncate">{categoryScores[categoryScores.length-1]?.category}</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{categoryScores[categoryScores.length-1]?.category}</div>
                </div>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed italic">

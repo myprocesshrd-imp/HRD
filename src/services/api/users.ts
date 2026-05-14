@@ -11,7 +11,7 @@ export async function getRoles(): Promise<Role[]> {
       .select("*");
     if (!error && data) return data.map((r: any) => r.role as Role);
   } catch {}
-  return ["super_admin", "hr_admin", "manager", "employee"];
+  return [];
 }
 
 
@@ -40,7 +40,7 @@ export async function getUsers(): Promise<MockUser[]> {
       }));
     }
   } catch {}
-  return MOCK_USERS_DATA;
+  return [];
 }
 
 export async function getUserById(id: string): Promise<MockUser | undefined> {
@@ -67,7 +67,7 @@ export async function getUserById(id: string): Promise<MockUser | undefined> {
       };
     }
   } catch {}
-  return MOCK_USERS_DATA.find((u) => u.id === id);
+  return undefined;
 }
 
 export async function getUserByEmail(email: string): Promise<MockUser | undefined> {
@@ -94,7 +94,7 @@ export async function getUserByEmail(email: string): Promise<MockUser | undefine
       };
     }
   } catch {}
-  return MOCK_USERS_DATA.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  return undefined;
 }
 
 export async function getDemographicsConstants(): Promise<{

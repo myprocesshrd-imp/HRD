@@ -22,8 +22,10 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as SurveyPublicIdRouteImport } from './routes/survey/public/$id'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin/users'
 import { Route as AppAdminSurveysRouteImport } from './routes/_app/admin/surveys'
+import { Route as AppAdminRawDataRouteImport } from './routes/_app/admin/raw-data'
 import { Route as AppAdminQuestionsRouteImport } from './routes/_app/admin/questions'
 import { Route as AppAdminDepartmentsRouteImport } from './routes/_app/admin/departments'
+import { Route as AppAdminBusinessUnitsRouteImport } from './routes/_app/admin/business-units'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -89,6 +91,11 @@ const AppAdminSurveysRoute = AppAdminSurveysRouteImport.update({
   path: '/admin/surveys',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRawDataRoute = AppAdminRawDataRouteImport.update({
+  id: '/admin/raw-data',
+  path: '/admin/raw-data',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminQuestionsRoute = AppAdminQuestionsRouteImport.update({
   id: '/admin/questions',
   path: '/admin/questions',
@@ -97,6 +104,11 @@ const AppAdminQuestionsRoute = AppAdminQuestionsRouteImport.update({
 const AppAdminDepartmentsRoute = AppAdminDepartmentsRouteImport.update({
   id: '/admin/departments',
   path: '/admin/departments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminBusinessUnitsRoute = AppAdminBusinessUnitsRouteImport.update({
+  id: '/admin/business-units',
+  path: '/admin/business-units',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -110,8 +122,10 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/results': typeof AppResultsRoute
   '/survey': typeof AppSurveyRoute
+  '/admin/business-units': typeof AppAdminBusinessUnitsRoute
   '/admin/departments': typeof AppAdminDepartmentsRoute
   '/admin/questions': typeof AppAdminQuestionsRoute
+  '/admin/raw-data': typeof AppAdminRawDataRoute
   '/admin/surveys': typeof AppAdminSurveysRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/survey/public/$id': typeof SurveyPublicIdRoute
@@ -126,8 +140,10 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/results': typeof AppResultsRoute
   '/survey': typeof AppSurveyRoute
+  '/admin/business-units': typeof AppAdminBusinessUnitsRoute
   '/admin/departments': typeof AppAdminDepartmentsRoute
   '/admin/questions': typeof AppAdminQuestionsRoute
+  '/admin/raw-data': typeof AppAdminRawDataRoute
   '/admin/surveys': typeof AppAdminSurveysRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/survey/public/$id': typeof SurveyPublicIdRoute
@@ -144,8 +160,10 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/results': typeof AppResultsRoute
   '/_app/survey': typeof AppSurveyRoute
+  '/_app/admin/business-units': typeof AppAdminBusinessUnitsRoute
   '/_app/admin/departments': typeof AppAdminDepartmentsRoute
   '/_app/admin/questions': typeof AppAdminQuestionsRoute
+  '/_app/admin/raw-data': typeof AppAdminRawDataRoute
   '/_app/admin/surveys': typeof AppAdminSurveysRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/survey/public/$id': typeof SurveyPublicIdRoute
@@ -162,8 +180,10 @@ export interface FileRouteTypes {
     | '/reports'
     | '/results'
     | '/survey'
+    | '/admin/business-units'
     | '/admin/departments'
     | '/admin/questions'
+    | '/admin/raw-data'
     | '/admin/surveys'
     | '/admin/users'
     | '/survey/public/$id'
@@ -178,8 +198,10 @@ export interface FileRouteTypes {
     | '/reports'
     | '/results'
     | '/survey'
+    | '/admin/business-units'
     | '/admin/departments'
     | '/admin/questions'
+    | '/admin/raw-data'
     | '/admin/surveys'
     | '/admin/users'
     | '/survey/public/$id'
@@ -195,8 +217,10 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/results'
     | '/_app/survey'
+    | '/_app/admin/business-units'
     | '/_app/admin/departments'
     | '/_app/admin/questions'
+    | '/_app/admin/raw-data'
     | '/_app/admin/surveys'
     | '/_app/admin/users'
     | '/survey/public/$id'
@@ -303,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminSurveysRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/raw-data': {
+      id: '/_app/admin/raw-data'
+      path: '/admin/raw-data'
+      fullPath: '/admin/raw-data'
+      preLoaderRoute: typeof AppAdminRawDataRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/questions': {
       id: '/_app/admin/questions'
       path: '/admin/questions'
@@ -317,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminDepartmentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/business-units': {
+      id: '/_app/admin/business-units'
+      path: '/admin/business-units'
+      fullPath: '/admin/business-units'
+      preLoaderRoute: typeof AppAdminBusinessUnitsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -327,8 +365,10 @@ interface AppRouteChildren {
   AppReportsRoute: typeof AppReportsRoute
   AppResultsRoute: typeof AppResultsRoute
   AppSurveyRoute: typeof AppSurveyRoute
+  AppAdminBusinessUnitsRoute: typeof AppAdminBusinessUnitsRoute
   AppAdminDepartmentsRoute: typeof AppAdminDepartmentsRoute
   AppAdminQuestionsRoute: typeof AppAdminQuestionsRoute
+  AppAdminRawDataRoute: typeof AppAdminRawDataRoute
   AppAdminSurveysRoute: typeof AppAdminSurveysRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
 }
@@ -340,8 +380,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportsRoute: AppReportsRoute,
   AppResultsRoute: AppResultsRoute,
   AppSurveyRoute: AppSurveyRoute,
+  AppAdminBusinessUnitsRoute: AppAdminBusinessUnitsRoute,
   AppAdminDepartmentsRoute: AppAdminDepartmentsRoute,
   AppAdminQuestionsRoute: AppAdminQuestionsRoute,
+  AppAdminRawDataRoute: AppAdminRawDataRoute,
   AppAdminSurveysRoute: AppAdminSurveysRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
 }

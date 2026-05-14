@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { invokeAdminService } from "./admin-helper";
 import { QUESTION_BANK as MOCK_QUESTION_BANK } from "@/lib/mock-data";
 import type { SurveySection, Question, QuestionType, QuestionChoice } from "@/lib/mock-data";
@@ -7,14 +7,14 @@ export type { SurveySection, Question, QuestionType, QuestionChoice };
 
 export async function getQuestionBank(): Promise<SurveySection[]> {
   try {
-    const { data: sections, error } = await supabase
+    const { data: sections, error } = await supabaseAdmin
       .from("sections")
       .select("*")
       .order("sort_order");
     if (!error && sections && sections.length > 0) {
       const result: SurveySection[] = [];
       for (const sec of sections) {
-        const { data: questions, error: qErr } = await supabase
+        const { data: questions, error: qErr } = await supabaseAdmin
           .from("questions")
           .select("*, question_choices(*), matrix_rows(*), matrix_columns(*)")
           .eq("section_id", sec.id)
@@ -26,7 +26,7 @@ export async function getQuestionBank(): Promise<SurveySection[]> {
           titleTh: sec.title_th,
           descEn: sec.desc_en ?? "",
           descTh: sec.desc_th ?? "",
-          questions: (questions ?? []).map((q) => ({
+          questions: (questions ?? []).map((q: any) => ({
             id: q.id,
             type: q.type as QuestionType,
             textEn: q.text_en,
@@ -39,16 +39,19 @@ export async function getQuestionBank(): Promise<SurveySection[]> {
             maxValue: q.max_value ?? undefined,
             minChoices: q.min_choices ?? undefined,
             maxChoices: q.max_choices ?? undefined,
-            choices: q.question_choices?.map((c: { value: string; label_en: string; label_th: string }) => ({
+            choices: q.question_choices?.map((c: any) => ({
               value: c.value,
               labelEn: c.label_en,
-              labelTh: c.label_th,
+              labelTh: c.label_th
             })) ?? undefined,
-            rows: q.matrix_rows?.map((r: { label_en: string; label_th: string }) => ({ textEn: r.label_en, textTh: r.label_th })) ?? undefined,
-            columns: q.matrix_columns?.map((c: { value: string; label_en: string; label_th: string }) => ({
+            rows: q.matrix_rows?.map((r: any) => ({
+              textEn: r.label_en,
+              textTh: r.label_th
+            })) ?? undefined,
+            columns: q.matrix_columns?.map((c: any) => ({
               value: c.value,
               labelEn: c.label_en,
-              labelTh: c.label_th,
+              labelTh: c.label_th
             })) ?? undefined,
           })),
         });
@@ -56,7 +59,7 @@ export async function getQuestionBank(): Promise<SurveySection[]> {
       if (result.length > 0) return result;
     }
   } catch {}
-  return MOCK_QUESTION_BANK;
+  return [];
 }
 
 export async function createSection(data: {
@@ -65,6 +68,7 @@ export async function createSection(data: {
   titleTh: string;
   descEn: string;
   descTh: string;
+  businessUnitId?: string;
 }): Promise<string> {
   const result = await invokeAdminService("SECTION_CREATE", {
     code: data.code,
@@ -72,6 +76,7 @@ export async function createSection(data: {
     title_th: data.titleTh,
     desc_en: data.descEn,
     desc_th: data.descTh,
+    business_unit_id: data.businessUnitId || null,
   });
   return result.code;
 }
@@ -81,6 +86,7 @@ export async function updateSection(code: string, data: {
   titleTh: string;
   descEn: string;
   descTh: string;
+  businessUnitId?: string;
 }): Promise<void> {
   await invokeAdminService("SECTION_UPDATE", {
     code,
@@ -89,6 +95,7 @@ export async function updateSection(code: string, data: {
       title_th: data.titleTh,
       desc_en: data.descEn,
       desc_th: data.descTh,
+      business_unit_id: data.businessUnitId || null,
     },
   });
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { MOCK_USERS, type MockUser, type Role } from "./mock-data";
+import type { MockUser, Role } from "./mock-data";
 import { idmsLogin } from "@/services/idms.service";
 
 interface AuthCtx {
@@ -14,11 +14,7 @@ const Ctx = createContext<AuthCtx | null>(null);
 const STORAGE_KEY = "hrpulse.session";
 
 function mockLogin(employeeCode: string, password: string): MockUser {
-  const found = MOCK_USERS.find(
-    (u) => u.employeeCode.toLowerCase() === employeeCode.trim().toLowerCase() && u.password === password
-  );
-  if (!found) throw new Error("Invalid credentials");
-  return found;
+  throw new Error("Invalid credentials");
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
