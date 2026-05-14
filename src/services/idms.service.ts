@@ -3,7 +3,7 @@ import type { Role } from "@/lib/mock-data";
 import md5 from "md5";
 import { pushLog } from "./debug";
 
-const IDMS_BASE = import.meta.env.VITE_IDMS_BASE_URL;
+const IDMS_BASE = import.meta.env.VITE_IDMS_BASE_URL || (typeof process !== 'undefined' ? process.env.VITE_IDMS_BASE_URL : "");
 const IDMS_AUTH_URL = "https://mobiledev.advanceagro.net/ws/api/idms/authentication/";
 const USE_MD5 = true;
 

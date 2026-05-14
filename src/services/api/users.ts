@@ -176,9 +176,8 @@ export async function setUserActive(id: string, active: boolean): Promise<void> 
 
 export async function syncUsersFromHRMS(): Promise<{ success: number; failed: number }> {
   try {
-    // In a real scenario, this would call VITE_IDMS_BASE_URL
-    // We'll simulate a fetch and then perform an upsert
-    const response = await fetch(`${import.meta.env.VITE_IDMS_BASE_URL}/employees`);
+    const idmsBase = import.meta.env.VITE_IDMS_BASE_URL || (typeof process !== 'undefined' ? process.env.VITE_IDMS_BASE_URL : "");
+    const response = await fetch(`${idmsBase}/employees`);
     if (!response.ok) throw new Error("HRMS API unreachable");
     
     const hrmsUsers = await response.json();
