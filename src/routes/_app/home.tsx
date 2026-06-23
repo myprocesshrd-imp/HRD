@@ -1,0 +1,498 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
+import { getBulletinPosts } from "@/lib/mock-data";
+import type { BulletinPost, BulletinCategory } from "@/lib/mock-data";
+import { getSurveys } from "@/services/api";
+import type { MockSurvey } from "@/services/api";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Home, Pin, Calendar, Tag, User, ChevronRight, ClipboardList,
+  Megaphone, Shield, Cpu, Sparkles, BookOpen, AlertTriangle,
+  Clock, ArrowRight, FileEdit, Search, ExternalLink, Link as LinkIcon,
+  CheckCircle2, BarChart3, ListTodo,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+
+export const Route = createFileRoute("/_app/home")({
+  component: HomePage,
+});
+
+// ── Category Config ──
+const CATEGORY_CONFIG: Record<BulletinCategory, { labelTh: string; labelEn: string; color: string; bg: string; border: string; icon: typeof Megaphone }> = {
+  general:  { labelTh: "ทั่วไป",          labelEn: "General",  color: "text-slate-600",   bg: "bg-slate-100",   border: "border-slate-200",   icon: Megaphone },
+  hr:       { labelTh: "ทรัพยากรบุคคล",  labelEn: "HR",       color: "text-indigo-600",  bg: "bg-indigo-50",   border: "border-indigo-200",  icon: User },
+  it:       { labelTh: "IT",              labelEn: "IT",       color: "text-cyan-600",    bg: "bg-cyan-50",     border: "border-cyan-200",    icon: Cpu },
+  event:    { labelTh: "กิจกรรม",         labelEn: "Event",    color: "text-violet-600",  bg: "bg-violet-50",   border: "border-violet-200",  icon: Sparkles },
+  policy:   { labelTh: "นโยบาย",          labelEn: "Policy",   color: "text-amber-600",   bg: "bg-amber-50",    border: "border-amber-200",   icon: BookOpen },
+  safety:   { labelTh: "ความปลอดภัย",    labelEn: "Safety",   color: "text-rose-600",    bg: "bg-rose-50",     border: "border-rose-200",    icon: Shield },
+};
+
+const ALL_CATEGORIES: Array<BulletinCategory | "all"> = ["all", "general", "hr", "it", "event", "policy", "safety"];
+
+function formatDate(iso: string, lang: "th" | "en"): string {
+  try {
+    const d = new Date(iso);
+    if (lang === "th") return d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  } catch { return iso; }
+}
+
+// ── Post Card ──
+function PostCard({ post, lang }: { post: BulletinPost; lang: "th" | "en" }) {
+  const [expanded, setExpanded] = useState(false);
+  const cfg = CATEGORY_CONFIG[post.category];
+  const CatIcon = cfg.icon;
+  const title = lang === "th" ? post.titleTh : post.titleEn;
+  const content = lang === "th" ? post.contentTh : post.contentEn;
+
+  return (
+    <Card className={cn(
+      "group relative overflow-hidden transition-all duration-500 rounded-2xl border bg-white dark:bg-slate-900/80 backdrop-blur-sm h-full flex flex-col",
+      post.isPinned
+        ? "border-indigo-200 dark:border-indigo-800 shadow-lg shadow-indigo-100/50 dark:shadow-indigo-900/20"
+        : "border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1"
+    )}>
+      {/* Pinned stripe */}
+      {post.isPinned && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+      )}
+
+      {/* Cover image */}
+      {post.imageUrl && (
+        <div className="relative h-48 overflow-hidden">
+          <img
+            src={post.imageUrl}
+            alt={title}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
+          {post.isPinned && (
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-white/90 backdrop-blur-md text-indigo-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg">
+              <Pin className="w-3.5 h-3.5" />
+              <span>{lang === "th" ? "ปักหมุด" : "Pinned"}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <CardContent className="p-6 flex-1 flex flex-col space-y-5">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Pinned badge (no image) */}
+            {post.isPinned && !post.imageUrl && (
+              <div className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md">
+                <Pin className="w-3 h-3" />
+                <span>{lang === "th" ? "ปักหมุด" : "Pinned"}</span>
+              </div>
+            )}
+            {/* Category badge */}
+            <div className={cn("flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors", cfg.color, cfg.bg, cfg.border)}>
+              <CatIcon className="w-3.5 h-3.5" />
+              <span>{lang === "th" ? cfg.labelTh : cfg.labelEn}</span>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-md">
+            <Clock className="w-3.5 h-3.5" />
+            {formatDate(post.postedAt, lang)}
+          </span>
+        </div>
+
+        {/* Title */}
+        <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+          {title}
+        </h3>
+
+        {/* Content - takes available space, clamped */}
+        <p className={cn("text-[14px] text-slate-600 dark:text-slate-400 leading-relaxed flex-1", !expanded && "line-clamp-4")}>
+          {content}
+        </p>
+
+        {/* Footer pushed to bottom */}
+        <div className="mt-auto">
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2 text-[12px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-full">
+              <User className="w-3.5 h-3.5 text-slate-400" />
+              <span>{post.postedBy}</span>
+            </div>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-[12px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1.5 transition-all group/btn bg-indigo-50/50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-1.5 rounded-full"
+            >
+              {expanded
+                ? (lang === "th" ? "ย่อ" : "Show less")
+                : (lang === "th" ? "อ่านเพิ่มเติม" : "Read more")}
+              <ChevronRight className={cn("w-4 h-4 transition-transform duration-300", expanded ? "-rotate-90" : "group-hover/btn:translate-x-1")} />
+            </button>
+          </div>
+
+          {/* ── Attached Links (only show when expanded to keep card height consistent) ── */}
+          {expanded && (post.links ?? []).filter((l) => l.url).length > 0 && (
+            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <LinkIcon className="w-3.5 h-3.5" />
+                {lang === "th" ? "เอกสาร/ลิงก์ที่แนบ" : "Attached Links"}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(post.links ?? []).filter((l) => l.url).map((link, i) => (
+                  <a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-bold border border-indigo-100 dark:border-indigo-800/50 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all group/link"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center group-hover/link:bg-indigo-600 group-hover/link:text-white transition-colors">
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                    </div>
+                    {lang === "th"
+                      ? (link.labelTh || link.labelEn || link.url)
+                      : (link.labelEn || link.labelTh || link.url)}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Survey Mini Card ──
+function SurveyCard({ survey, lang, onStart }: { survey: MockSurvey; lang: "th" | "en"; onStart: () => void }) {
+  const pct = survey.target > 0 ? Math.min(100, Math.round((survey.responses / survey.target) * 100)) : 0;
+  const isNearDeadline =
+    survey.endDate && survey.endDate !== "—" && (() => {
+      try { const d = new Date(survey.endDate.split("/").reverse().join("-")); return (d.getTime() - Date.now()) / 86400000 <= 7; }
+      catch { return false; }
+    })();
+  return (
+    <div
+      onClick={onStart}
+      className="group relative flex flex-col gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/60 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md hover:shadow-indigo-500/8 transition-all duration-200 cursor-pointer"
+    >
+      <div className="flex items-center gap-3">
+        {/* Icon */}
+        <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
+          <ClipboardList className="w-[16px] h-[16px] text-indigo-600 dark:text-indigo-400" />
+        </div>
+
+        {/* Title + meta */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
+            {lang === "th" ? survey.titleTh : survey.titleEn}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className={`text-[10px] font-medium flex items-center gap-1 ${isNearDeadline ? "text-red-400 dark:text-red-400" : "text-slate-400 dark:text-slate-500"}`}>
+              <Clock className="w-3 h-3" />
+              {survey.endDate && survey.endDate !== "—" ? survey.endDate : (lang === "th" ? "ไม่จำกัดเวลา" : "No deadline")}
+            </span>
+          </div>
+        </div>
+
+        {/* Status + progress */}
+        <div className="flex items-center gap-2 shrink-0">
+          {survey.status === "Active" ? (
+            <Badge className="h-[20px] text-[9px] font-semibold px-2.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 shadow-none">
+              <span className="relative flex h-1.5 w-1.5 mr-1.5">
+                <span className="animate-ping absolute inset-0 rounded-full bg-emerald-500 opacity-60" />
+                <span className="relative rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+              Active
+            </Badge>
+          ) : (
+            <Badge className="h-[20px] text-[9px] font-semibold px-2.5 rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-none">
+              {survey.status}
+            </Badge>
+          )}
+          <div className="relative w-8 h-8">
+            <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15" fill="none" stroke="#e2e8f0" strokeWidth="2.5" className="dark:stroke-slate-700" />
+              <circle
+                cx="18" cy="18" r="15" fill="none"
+                stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"
+                strokeDasharray={`${(pct / 100) * 94.2} 94.2`}
+                className="transition-all duration-1000"
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-indigo-600 dark:text-indigo-400">
+              {pct}%
+            </span>
+          </div>
+          <div className="w-6 h-6 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+            <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-white" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ──
+function HomePage() {
+  const { t, lang } = useI18n();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const [posts, setPosts] = useState<BulletinPost[]>([]);
+  const [surveys, setSurveys] = useState<MockSurvey[]>([]);
+  const [activeCategory, setActiveCategory] = useState<BulletinCategory | "all">("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setPosts(getBulletinPosts());
+    getSurveys().then((data) => setSurveys(data.filter((s) => s.status === "Active")));
+  }, []);
+
+  const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned), [posts]);
+
+  const filteredPosts = useMemo(() => {
+    let list = posts;
+    const isFiltering = activeCategory !== "all" || search.trim() !== "";
+    
+    if (!isFiltering) {
+      list = list.filter((p) => !p.isPinned); // non-pinned only in main list when not filtering
+    }
+
+    if (activeCategory !== "all") list = list.filter((p) => p.category === activeCategory);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((p) =>
+        p.titleTh.toLowerCase().includes(q) ||
+        p.titleEn.toLowerCase().includes(q) ||
+        p.contentTh.toLowerCase().includes(q) ||
+        p.contentEn.toLowerCase().includes(q)
+      );
+    }
+    return list.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+  }, [posts, activeCategory, search]);
+
+  const greetingName = user ? (lang === "th" ? user.nameTh : user.nameEn) : "";
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* ── Compact Corporate Hero Banner ── */}
+      <div className="relative min-h-[170px] md:min-h-[200px] flex items-center overflow-hidden rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xl bg-slate-950 text-white">
+        {/* Deep Corporate Gradient Base */}
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#0f172a_0%,#1e2937_40%,#0f172a_100%)]" />
+        
+        {/* Subtle Mesh */}
+        <div 
+          className="absolute inset-0 opacity-[0.05]" 
+          style={{ 
+            backgroundImage: `linear-gradient(#64748b 1px, transparent 1px), linear-gradient(90deg, #64748b 1px, transparent 1px)`,
+            backgroundSize: '48px 48px'
+          }} 
+        />
+        
+        {/* Accent Gradients */}
+        <div className="absolute -top-16 -right-12 w-80 h-80 rounded-full bg-gradient-to-br from-indigo-600/20 to-transparent blur-3xl" />
+        <div className="absolute -bottom-12 -left-8 w-64 h-64 rounded-full bg-gradient-to-tr from-teal-500/15 to-transparent blur-3xl" />
+
+        {/* Compact Abstract Visual (Right) */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden xl:block w-[120px] h-[120px] pointer-events-none">
+          <div className="absolute inset-0 rounded-full border border-white/10" />
+          <div className="absolute inset-[14px] rounded-full border border-white/20" />
+          <div className="absolute inset-[28px] rounded-full border border-white/30" />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-xl bg-white/10 border border-white/30 flex items-center justify-center">
+            <div className="w-2 h-2 rounded-full bg-white" />
+          </div>
+        </div>
+
+        <div className="relative z-10 px-6 md:px-10 py-4 md:py-6 w-full max-w-5xl">
+          {/* Small Badge */}
+          <div className="inline-flex items-center gap-1.5 mb-2 text-[8px] font-mono uppercase tracking-[2px] text-white/60">
+            <div className="w-1 h-1 rounded-full bg-emerald-400" />
+            HR PULSE
+          </div>
+
+          {/* Headline */}
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-tight text-balance max-w-[28ch]">
+            {lang === "th" 
+              ? "เสียงของคุณ คือพลังขององค์กร" 
+              : "Your Voice. Our Future."}
+          </h1>
+
+          <p className="mt-1 text-xs md:text-sm text-slate-400 max-w-md leading-snug">
+            {lang === "th" 
+              ? "ร่วมแบ่งปันความคิดเห็นเพื่อพัฒนาองค์กร ทุกเสียงมีคุณค่า" 
+              : "Share your voice to help shape a better workplace."}
+          </p>
+
+          {/* Greeting + Compact CTAs */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <div className="text-xs text-white/80">
+              สวัสดี, <span className="font-semibold text-white">{greetingName || (lang === "th" ? "เพื่อนร่วมงาน" : "Colleague")}</span>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                size="sm"
+                onClick={() => navigate({ to: "/survey" })}
+                className="h-7 px-3 rounded-xl bg-white text-slate-950 hover:bg-white/90 text-[11px] font-semibold tracking-wider"
+              >
+                เริ่มทำแบบสำรวจ
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.scrollTo({ top: 480, behavior: 'smooth' })}
+                className="h-7 px-3 rounded-xl border-white/25 bg-white/5 hover:bg-white/10 text-white text-[11px]"
+              >
+                ดูประกาศ
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+
+        {/* ── Main: Announcements ── */}
+        <div className="xl:col-span-2 space-y-6">
+
+          {/* Section header - Corporate */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-white/10 flex items-center justify-center">
+                <Megaphone className="w-4 h-4 text-white dark:text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold tracking-[-0.3px] text-slate-900 dark:text-white">
+                  {t("home.announcements")}
+                </h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-0.5">Latest updates from leadership &amp; teams</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder={lang === "th" ? "ค้นหาประกาศ..." : "Search announcements..."}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-10 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+            />
+          </div>
+
+          {/* Category filter - Corporate Pills */}
+          <div className="flex flex-wrap gap-2">
+            {ALL_CATEGORIES.map((cat) => {
+              const isAll = cat === "all";
+              const cfg = isAll ? null : CATEGORY_CONFIG[cat as BulletinCategory];
+              const label = isAll
+                ? (lang === "th" ? "ทั้งหมด" : "All")
+                : (lang === "th" ? cfg!.labelTh : cfg!.labelEn);
+              const active = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat as BulletinCategory | "all")}
+                  className={cn(
+                    "px-5 py-2 rounded-2xl text-[10px] font-semibold uppercase tracking-[1.5px] transition-all duration-200 border",
+                    active
+                      ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-950 dark:border-white shadow"
+                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pinned posts */}
+          {pinnedPosts.length > 0 && activeCategory === "all" && !search && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Pin className="w-3.5 h-3.5" />
+                <span>{t("home.pinned")}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {pinnedPosts.map((post) => (
+                  <PostCard key={post.id} post={post} lang={lang} />
+                ))}
+              </div>
+              {filteredPosts.length > 0 && (
+                <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-600">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+                  <span>{lang === "th" ? "ประกาศล่าสุด" : "Latest Posts"}</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Regular posts */}
+          {filteredPosts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {filteredPosts.map((post) => (
+                <PostCard key={post.id} post={post} lang={lang} />
+              ))}
+            </div>
+          ) : (
+            <div className="py-16 text-center space-y-3 opacity-60">
+              <div className="w-14 h-14 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center mx-auto border border-dashed border-slate-300 dark:border-slate-700">
+                <Megaphone className="w-7 h-7 text-slate-400" />
+              </div>
+              <p className="text-sm font-medium text-slate-500">{t("home.noAnnouncements")}</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Right Sidebar (sticky) ── */}
+        <div className="space-y-6 sticky top-6 self-start">
+
+          {/* My Surveys */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 backdrop-blur-sm overflow-hidden shadow-lg shadow-slate-200/40 dark:shadow-black/20">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-950 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+                  <ListTodo className="w-[18px] h-[18px]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold tracking-tight">
+                    {t("home.surveys")}
+                  </h3>
+                  <p className="text-[10px] font-medium text-white/60 mt-0.5">
+                    {t("home.surveysDesc")}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              {surveys.length > 0 ? (
+                surveys.map((s) => (
+                  <SurveyCard
+                    key={s.id}
+                    survey={s}
+                    lang={lang}
+                    onStart={() => navigate({ to: "/survey" })}
+                  />
+                ))
+              ) : (
+                <div className="py-8 text-center text-sm text-slate-400">
+                  {t("home.noSurveys")}
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default HomePage;
