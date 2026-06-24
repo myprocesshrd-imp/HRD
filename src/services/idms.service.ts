@@ -242,7 +242,23 @@ export async function idmsLogin(
     });
     pushLog("log","[IDMS] Target URL:", `${IDMS_AUTH_URL}?${params}`);
 
-    const loginRes = await fetch(`${IDMS_AUTH_URL}?${params}`);
+    let loginRes: Response;
+    try {
+      loginRes = await fetch("/api/idms-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          account: employeeCode,
+          password: passwordToSend,
+          Service: "0000",
+          AgentId: "SystemMango",
+          AgentCode: "Np4kfRh5",
+        }),
+      });
+    } catch {
+      // Fallback to direct API call (e.g., if SSR proxy is unavailable)
+      loginRes = await fetch(`${IDMS_AUTH_URL}?${params}`);
+    }
 
     pushLog("log","[IDMS] Login response status:", loginRes.status);
 
@@ -257,10 +273,22 @@ export async function idmsLogin(
       if (loginData.Result === "OK" && loginData.EmpId) {
         pushLog("log","[IDMS] Login OK, EmpId:", loginData.EmpId);
 
-        const profileRes = await fetch(
-          `${IDMS_BASE}/hrms/employee/${loginData.EmpId}`,
-          { headers: { Authorization: `Bearer ${loginData.Token}` } }
-        );
+        let profileRes: Response;
+        try {
+          profileRes = await fetch("/api/idms-profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              empId: loginData.EmpId,
+              token: loginData.Token,
+            }),
+          });
+        } catch {
+          profileRes = await fetch(
+            `${IDMS_BASE}/hrms/employee/${loginData.EmpId}`,
+            { headers: { Authorization: `Bearer ${loginData.Token}` } }
+          );
+        }
 
         if (profileRes.ok) {
           const profileData = await profileRes.json();
