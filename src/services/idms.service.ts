@@ -312,6 +312,10 @@ export async function idmsLogin(
   // 2. Try Supabase users table
   pushLog("log","[IDMS] Trying Supabase lookup...");
   try {
+    if (!supabase) {
+      pushLog("warn",  "[IDMS] Supabase client not available (missing env vars)");
+      return null;
+    }
     const { data, error } = await supabase
       .from("users")
       .select("*, departments(name_en)")
@@ -372,6 +376,10 @@ function mapIDMSToUser(emp: IDMSProfile, employeeCode: string): SyncResult {
 }
 
 async function syncUserToSupabase(emp: IDMSProfile, user: SyncResult) {
+  if (!supabaseAdmin) {
+    pushLog("warn",  "[IDMS] supabaseAdmin not available (missing SERVICE_ROLE key)");
+    return;
+  }
   try {
     // Check existing user to preserve their admin-assigned role
     const { data: existingData } = await supabaseAdmin
