@@ -232,12 +232,12 @@ function AnonymousSurveyPage() {
           </p>
           <div className="mt-10 flex justify-center">
             <Button className="h-10 px-10 rounded-xl shadow-lg shadow-primary/20 font-bold uppercase tracking-wider text-[10px] transition-all" onClick={() => { setDraft({ profile: {}, answers: {}, feedback: {} }); setStep(0); }}>
-              {lang === "th" ? "เสร็จสิ้นภารกิจ" : "Decommission Session"}
+              {lang === "th" ? "ปิดหน้านี้" : "Close"}
             </Button>
           </div>
           <p className="mt-8 text-[9px] uppercase font-bold tracking-[0.3em] text-slate-400 flex items-center justify-center gap-2">
             <Lock className="w-3 h-3" />
-            {lang === "th" ? "เซสชันของคุณได้รับการเข้ารหัสแล้ว" : "Session Encrypted & Protected"}
+            {lang === "th" ? "ข้อมูลของคุณถูกเข้ารหัสอย่างปลอดภัย" : "Session Encrypted & Protected"}
           </p>
         </Card>
       </div>
@@ -295,7 +295,7 @@ function AnonymousSurveyPage() {
                   {step === 0
                     ? t("survey.startLabelAnon")
                     : isDemographicsStep
-                      ? (lang === "th" ? "ข้อมูลพื้นฐาน" : "Baseline Profiling")
+                      ? (lang === "th" ? "ข้อมูลผู้ตอบ" : "Respondent Information")
                       : currentSection
                         ? (lang === "th" ? currentSection.titleTh : currentSection.titleEn)
                         : ""}
@@ -336,8 +336,8 @@ function AnonymousSurveyPage() {
                    </div>
                   <p className="text-lg font-medium text-slate-700 leading-relaxed italic relative">
                     "{lang === "th"
-                        ? "ศูนย์ปฏิบัติการแบบสำรวจนี้ได้รับการปกป้องข้อมูลอย่างเต็มรูปแบบ ข้อมูลจะถูกใช้เพื่อการวิเคราะห์ในระดับกลุ่มเท่านั้น"
-                        : "This operational survey gateway is fully protected. Profiling data is utilized exclusively for high-level aggregate analysis."}"
+                        ? "แบบสำรวจนี้มีการปกป้องข้อมูลอย่างเต็มรูปแบบ คำตอบของคุณจะถูกนำไปวิเคราะห์ในภาพรวมเท่านั้น"
+                        : "This survey is fully protected. Your responses are used exclusively for aggregate analysis."}"
                   </p>
                 </div>
 
@@ -435,7 +435,7 @@ function AnonymousSurveyPage() {
                     <Info className="w-5 h-5" />
                   </div>
                   <p className="text-[11px] font-bold text-amber-800 leading-relaxed uppercase tracking-wider max-w-lg">
-                    Note: Structural data integrity is maintained by suppressing analysis for cohorts with fewer than 5 respondents.
+                    หมายเหตุ: เพื่อความถูกต้องของข้อมูล ระบบจะไม่แสดงผลวิเคราะห์สำหรับกลุ่มที่มีผู้ตอบน้อยกว่า 5 คน
                   </p>
                 </div>
               </div>
@@ -509,7 +509,7 @@ function AnonymousSurveyPage() {
                     {submitting ? (
                       <div className="flex items-center gap-2">
                         <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        {lang === "th" ? "กำลังส่ง..." : "Transmitting..."}
+                        {lang === "th" ? "กำลังส่ง..." : "Submitting..."}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">

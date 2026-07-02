@@ -111,7 +111,7 @@ function LoginPage() {
         </div>
 
         <div className="relative z-10 max-w-lg space-y-8 animate-in fade-in slide-in-from-left-12 duration-1000 delay-200">
-          <h1 className="text-6xl font-black leading-[1.1] tracking-tighter">
+          <h1 className="text-4xl font-black leading-[1.1] tracking-tighter">
             {lang === "th"
               ? "เปลี่ยนเสียงของพนักงาน ให้เป็นพลังขององค์กร"
               : "Transform Employee Voice into Growth."}
@@ -166,7 +166,7 @@ function LoginPage() {
               </Button>
             </div>
             <div className="space-y-2">
-              <h1 className="text-5xl font-black tracking-tighter leading-tight text-slate-900 dark:text-white">
+              <h1 className="text-3xl font-black tracking-tighter leading-tight text-slate-900 dark:text-white">
                 {t("auth.welcome")}
               </h1>
               <p className="text-lg font-medium text-slate-500 dark:text-slate-400">{t("auth.subtitle")}</p>
@@ -265,9 +265,9 @@ function LoginPage() {
           {/* Anonymous surveys */}
           {!surveysLoading && anonSurveys.length > 0 && (
             <div className="space-y-3 pt-6 border-t border-slate-100">
-               <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-primary px-1">
+               <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-primary px-1">
                 <Sparkles className="w-4 h-4" />
-                {lang === "th" ? "แบบสำรวจสาธารณะ" : "Public Campaigns"}
+                {lang === "th" ? "แบบสำรวจที่เปิดอยู่" : "Public Campaigns"}
               </div>
               {anonSurveys.map((s) => (
                 <Card
@@ -282,7 +282,7 @@ function LoginPage() {
                       </div>
                       <div className="flex items-center gap-3 text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
                         <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" /> {s.endDate}</span>
-                        <span className="flex items-center gap-1 text-emerald-600/70"><Info className="w-3.5 h-3.5" /> Anonymous</span>
+                        <span className="flex items-center gap-1 text-emerald-600/70"><Info className="w-3.5 h-3.5" /> {lang === "th" ? "แบบสำรวจไม่ระบุตัวตน" : "Anonymous"}</span>
                       </div>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all shrink-0">

@@ -63,7 +63,7 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
           <Rocket className="w-5 h-5 text-primary/70" />
         </div>
       </div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse italic">{lang === "th" ? "กำลังซิงค์ข้อมูลภารกิจ..." : "Syncing Mission Data..."}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse italic">{lang === "th" ? "กำลังโหลดข้อมูล..." : "Loading surveys..."}</p>
     </div>
   );
 
@@ -73,14 +73,14 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-primary">
             <Target className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em]">{lang === "th" ? "ศูนย์ปฏิบัติการ" : "Operational Hub"}</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em]">{lang === "th" ? "แบบสำรวจทั้งหมด" : "All Surveys"}</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-white leading-tight">
             {t("survey.title")}
           </h1>
           <p className="text-sm font-medium text-muted-foreground/80 max-w-lg">
             {lang === "th" 
-              ? "ศูนย์รวมแคมเปญการรับฟังเสียงของพนักงาน เพื่อร่วมกันขับเคลื่อนองค์กรสู่ความสำเร็จ" 
+              ? "รวมแบบสำรวจความผูกพันของพนักงานทั้งหมด เลือกแบบสำรวจที่ต้องการเพื่อร่วมแสดงความคิดเห็น" 
               : "Enterprise campaign intelligence center. Share your voice to drive organizational excellence."}
           </p>
         </div>
@@ -161,7 +161,7 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
             <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mx-auto border border-dashed border-slate-300">
               <ClipboardList className="w-8 h-8 text-slate-400" />
             </div>
-            <p className="text-sm font-bold text-slate-500 tracking-tight italic">{lang === "th" ? "ไม่พบภารกิจที่เปิดใช้งานในส่วนของคุณ" : "No active missions detected in your sector"}</p>
+            <p className="text-sm font-bold text-slate-500 tracking-tight italic">{lang === "th" ? "ไม่มีแบบสำรวจที่เปิดให้ตอบขณะนี้" : "No active surveys at this time"}</p>
           </div>
         )}
       </div>
@@ -385,7 +385,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
   if (!sectionsLoaded) return (
     <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[50vh] gap-6">
       <div className="w-12 h-12 rounded-xl border-4 border-primary/10 border-t-primary animate-spin" />
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground italic">{lang === "th" ? "กำลังตั้งค่าระบบรักษาความปลอดภัย..." : "Configuring Secure Pipeline..."}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground italic">{lang === "th" ? "กำลังโหลดแบบสำรวจ..." : "Loading survey..."}</p>
     </div>
   );
 
@@ -403,15 +403,15 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
           </p>
           <div className="grid grid-cols-2 gap-4 mt-10">
             <Button variant="outline" className="h-10 rounded-xl border-slate-200 font-bold uppercase tracking-wider text-[10px] hover:bg-slate-50 transition-all" onClick={onBack}>
-              {lang === "th" ? "กลับสู่ฐานบัญชาการ" : "Exit Hub"}
+              {lang === "th" ? "กลับสู่รายการ" : "Back to List"}
             </Button>
             <Button className="h-10 rounded-xl shadow-lg shadow-primary/20 font-bold uppercase tracking-wider text-[10px]" onClick={() => { setDraft({ surveyId, anonymous: false, profile: {}, answers: {}, feedback: {}, startedAt: Date.now() }); setStep(0); }}>
-              {lang === "th" ? "เริ่มภารกิจใหม่" : "Restart Mission"}
+              {lang === "th" ? "ทำแบบสำรวจอีกครั้ง" : "Take Another Survey"}
             </Button>
           </div>
           <p className="mt-8 text-[9px] uppercase font-bold tracking-[0.3em] text-slate-400 flex items-center justify-center gap-2">
             <Lock className="w-3 h-3" />
-            {lang === "th" ? "ส่งข้อมูลปลอดภัย" : "End-to-End Encryption Active"}
+            {lang === "th" ? "การส่งข้อมูลเป็นความลับและปลอดภัย" : "End-to-End Encryption Active"}
           </p>
         </Card>
       </div>
@@ -428,7 +428,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
             className="group flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-primary transition-all uppercase tracking-wider"
           >
             <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-            {lang === "th" ? "ยกเลิกภารกิจ" : "Abort Mission"}
+            {lang === "th" ? "ย้อนกลับ" : "Go Back"}
           </button>
           <div className="flex items-center gap-4">
             {savedAt && (
@@ -446,11 +446,11 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
               {step === 0
-                ? (lang === "th" ? "ภารกิจกำลังจะเริ่ม" : "Commence Mission")
+                ? (lang === "th" ? "เริ่มทำแบบสำรวจ" : "Start Survey")
                 : isProfileStep
                   ? t("survey.confirmProfile")
                   : isDemographicsStep
-                    ? (lang === "th" ? "ข้อมูลผู้ตอบแบบสอบถาม" : "Respondent Information")
+                    ? (lang === "th" ? "ข้อมูลผู้ตอบแบบสำรวจ" : "Respondent Information")
                     : currentSection
                       ? (lang === "th" ? currentSection.titleTh : currentSection.titleEn)
                       : ""}
@@ -491,17 +491,17 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                   <ShieldCheck className="w-16 h-16" />
                </div>
               <p className="text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed italic relative pr-10">
-                "{lang === "th"
-                  ? "แคมเปญนี้ออกแบบมาเพื่อรับฟังเสียงที่แท้จริงของคุณ ข้อมูลของคุณจะได้รับการปกป้องอย่างสูงสุดภายใต้มาตรฐานความปลอดภัย"
-                  : "This operational campaign is designed to capture authentic employee sentiment. Your responses are fortified by professional standards."}"
+                 "{lang === "th"
+                    ? "แบบสำรวจนี้ถูกออกแบบมาเพื่อรับฟังความคิดเห็นที่แท้จริงของคุณ ข้อมูลของคุณจะได้รับการปกป้องอย่างสูงสุดภายใต้มาตรฐานความปลอดภัย"
+                    : "This survey is designed to capture authentic employee sentiment. Your responses are protected by professional security standards."}"
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { icon: Clock, label: t("survey.duration"), color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-                { icon: Lock, label: lang === "th" ? "ความปลอดภัยสูง" : "Secure Node", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-                { icon: Sparkles, label: lang === "th" ? "รางวัลภารกิจ" : "Rewards", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
+                { icon: Lock, label: lang === "th" ? "ข้อมูลเป็นความลับ" : "Confidential", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+                { icon: Sparkles, label: lang === "th" ? "ร่วมพัฒนาองค์กรไปด้วยกัน" : "Building Together", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
               ].map((b) => (
                 <div key={b.label} className={cn("flex flex-col items-center text-center p-6 rounded-xl border bg-white gap-3 group/item hover:bg-slate-50 transition-all", b.border)}>
                   <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover/item:scale-105 shadow-sm", b.bg, b.color)}>
@@ -524,9 +524,9 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                   <Globe className={cn("w-5 h-5 transition-all duration-1000", draft.anonymous ? "animate-spin text-indigo-600" : "")} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-base tracking-tight text-slate-900 dark:text-white">{lang === "th" ? "โหมดไม่ระบุตัวตน" : "Cloak Mode (Anonymous)"}</h4>
+                  <h4 className="font-bold text-base tracking-tight text-slate-900 dark:text-white">{lang === "th" ? "ตอบแบบไม่ระบุตัวตน" : "Anonymous Mode"}</h4>
                   <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 max-w-sm">
-                    {lang === "th" ? "เปิดใช้งานเพื่อซ่อนอัตลักษณ์จากการประมวลผล" : "Enable to fully mask your identity node."}
+                    {lang === "th" ? "ระบบจะไม่บันทึกข้อมูลที่ระบุตัวตนของคุณ" : "Enable to fully mask your identity node."}
                   </p>
                 </div>
               </div>
@@ -539,8 +539,8 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                   checked={draft.anonymous}
                   onCheckedChange={(v) => {
                     setDraft((d) => ({ ...d, anonymous: !!v }));
-                    if (v) toast.info(lang === "th" ? "เปิดใช้โหมดไม่ระบุตัวตน" : "Stealth Mode Activated");
-                    else toast.info(lang === "th" ? "กลับสู่โหมดระบุตัวตน" : "Identified Mode Restored");
+                    if (v) toast.info(lang === "th" ? "เปิดใช้งานการตอบแบบไม่ระบุตัวตน" : "Anonymous Mode Enabled");
+                    else toast.info(lang === "th" ? "กลับสู่การตอบแบบระบุตัวตน" : "Identified Mode Restored");
                   }}
                   className="data-[state=checked]:bg-indigo-600 scale-90"
                 />
@@ -551,7 +551,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
             {user && !draft.anonymous && (
               <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 animate-in fade-in duration-1000 uppercase tracking-widest">
                 <UserCircle2 className="w-3.5 h-3.5 text-primary" />
-                {lang === "th" ? "ยืนยันตัวตนพนักงาน" : "Identity Linked"}: <span className="text-slate-900 dark:text-slate-300">{lang === "th" ? user.nameTh : user.nameEn}</span>
+                {lang === "th" ? "ผู้ตอบแบบสำรวจ" : "Respondent"}: <span className="text-slate-900 dark:text-slate-300">{lang === "th" ? user.nameTh : user.nameEn}</span>
               </div>
             )}
           </div>
@@ -599,7 +599,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
             ) : (
               <div className="flex flex-col items-center justify-center h-40 gap-4 opacity-60">
                 <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{lang === "th" ? "กำลังดึงข้อมูลโปรไฟล์..." : "Pulling Registry..."}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{lang === "th" ? "กำลังโหลดข้อมูล..." : "Loading profile..."}</p>
               </div>
             )}
           </div>
@@ -613,7 +613,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                 <Users className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">{lang === "th" ? "ข้อมูลผู้ตอบแบบสอบถาม" : "Personnel Mapping"}</h3>
+                <h3 className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">{lang === "th" ? "ข้อมูลผู้ตอบแบบสำรวจ" : "Personnel Mapping"}</h3>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">Baseline Context</p>
               </div>
             </div>
@@ -668,7 +668,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                 <Info className="w-5 h-5" />
               </div>
               <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 leading-relaxed uppercase tracking-wider max-w-lg">
-                Note: Structural data integrity is maintained by suppressing cohorts with fewer than 5 respondents.
+                หมายเหตุ: เพื่อความถูกต้องของข้อมูล ระบบจะไม่แสดงผลวิเคราะห์สำหรับกลุ่มที่มีผู้ตอบน้อยกว่า 5 คน
               </p>
             </div>
           </div>
@@ -786,7 +786,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
       <div className="flex flex-col items-center justify-center gap-4 opacity-40 py-4">
         <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
           <ShieldAlert className="w-3.5 h-3.5" />
-          {lang === "th" ? "ความปลอดภัยของภารกิจ" : "Mission Integrity Secured"}
+          {lang === "th" ? "ระบบความปลอดภัยข้อมูล" : "Data Security"}
         </div>
         <div className="flex flex-wrap justify-center gap-6">
           {["AES-256", "TLS 1.3", "SOC2", "ISO 27001"].map(s => (

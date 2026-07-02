@@ -222,6 +222,32 @@
 .animate-bounce-in { animation: bounce-in 0.5s ease-out; }
 .animate-pulse-glow { animation: pulse-glow 2s infinite; }
 
+/* Premium layout animations */
+@keyframes text-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-text-gradient {
+  background-size: 200% auto;
+  animation: text-gradient 5s ease infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-12px) scale(1.08); }
+}
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px) scale(1.08); }
+  50% { transform: translateY(12px) scale(1); }
+}
+.animate-float-delayed {
+  animation: float-delayed 10s ease-in-out infinite;
+}
+
 /* Stagger children */
 .stagger-children > * {
   opacity: 0;

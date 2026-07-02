@@ -177,6 +177,16 @@ function PersonnelMappingAdmin() {
           setSaving(false);
           return;
         }
+
+        const dup = departments.find(d =>
+          d.id !== editingId &&
+          (d.name_en.toLowerCase() === nameEn.trim().toLowerCase() || d.name_th.toLowerCase() === nameTh.trim().toLowerCase())
+        );
+        if (dup) {
+          toast.error(lang === "th" ? `ฝ่าย "${dup.name_th}" มีอยู่แล้วในระบบ` : `Division "${dup.name_en}" already exists`);
+          setSaving(false);
+          return;
+        }
         
         if (editingId) {
           await updateDepartment(editingId, nameEn.trim(), nameTh.trim(), selectedBuIds);
@@ -345,6 +355,26 @@ function PersonnelMappingAdmin() {
       key: "description",
       header: lang === "th" ? "คำอธิบาย" : "Description",
       render: (b) => <span className="text-slate-500 text-sm line-clamp-1">{b.description || "—"}</span>
+    },
+    {
+      key: "departments",
+      header: lang === "th" ? "ฝ่ายในสังกัด" : "Departments Under",
+      render: (b) => {
+        const underDepts = departments.filter(d => {
+          const ids = d.business_unit_ids || (d.business_unit_id ? [d.business_unit_id] : []);
+          return ids.includes(b.id);
+        });
+        if (underDepts.length === 0) return <span className="text-slate-300">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1 max-w-[320px]">
+            {underDepts.map((d) => (
+              <span key={d.id} className="h-6 px-2.5 rounded-lg border border-indigo-100 bg-indigo-50/50 dark:bg-indigo-950/30 dark:border-indigo-900 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                {lang === "th" ? d.name_th : d.name_en}
+              </span>
+            ))}
+          </div>
+        );
+      }
     },
     {
       key: "actions",
@@ -562,7 +592,7 @@ function PersonnelMappingAdmin() {
             <DialogDescription className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1">
               {activeTab === "departments" && (lang === "th" ? "จัดการข้อมูลฝ่าย" : "Configure Division details.")}
               {activeTab === "business_units" && (lang === "th" ? "จัดการข้อมูลหน่วยงานสังกัด" : "Configure Affiliated Unit details.")}
-              {activeTab !== "departments" && activeTab !== "business_units" && (lang === "th" ? "จัดการตัวเลือกในแบบสอบถาม" : "Configure demographic choice parameters.")}
+              {activeTab !== "departments" && activeTab !== "business_units" && (lang === "th" ? "จัดการตัวเลือกในแบบสำรวจ" : "Configure demographic choice parameters.")}
             </DialogDescription>
           </DialogHeader>
 

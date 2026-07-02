@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_app/home")({
   component: HomePage,
@@ -44,125 +45,178 @@ function formatDate(iso: string, lang: "th" | "en"): string {
 
 // ── Post Card ──
 function PostCard({ post, lang }: { post: BulletinPost; lang: "th" | "en" }) {
-  const [expanded, setExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const cfg = CATEGORY_CONFIG[post.category];
   const CatIcon = cfg.icon;
   const title = lang === "th" ? post.titleTh : post.titleEn;
   const content = lang === "th" ? post.contentTh : post.contentEn;
 
   return (
-    <Card className={cn(
-      "group relative overflow-hidden transition-all duration-500 rounded-2xl border bg-white dark:bg-slate-900/80 backdrop-blur-sm h-full flex flex-col",
-      post.isPinned
-        ? "border-indigo-200 dark:border-indigo-800 shadow-lg shadow-indigo-100/50 dark:shadow-indigo-900/20"
-        : "border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1"
-    )}>
-      {/* Pinned stripe */}
-      {post.isPinned && (
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
-      )}
+    <>
+      <Card 
+        onClick={() => setIsOpen(true)}
+        className={cn(
+          "group relative overflow-hidden transition-all duration-500 rounded-2xl border bg-white dark:bg-slate-900/80 backdrop-blur-sm h-[320px] flex flex-col cursor-pointer",
+          post.isPinned
+            ? "border-indigo-200 dark:border-indigo-800 shadow-lg shadow-indigo-100/50 dark:shadow-indigo-900/20"
+            : "border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1"
+        )}
+      >
+        {/* Pinned stripe */}
+        {post.isPinned && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+        )}
 
-      {/* Cover image */}
-      {post.imageUrl && (
-        <div className="relative h-48 overflow-hidden">
-          <img
-            src={post.imageUrl}
-            alt={title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
-          {post.isPinned && (
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-white/90 backdrop-blur-md text-indigo-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg">
-              <Pin className="w-3.5 h-3.5" />
-              <span>{lang === "th" ? "ปักหมุด" : "Pinned"}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <CardContent className="p-6 flex-1 flex flex-col space-y-5">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Pinned badge (no image) */}
-            {post.isPinned && !post.imageUrl && (
-              <div className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md">
+        {/* Cover image */}
+        {post.imageUrl && (
+          <div className="relative h-32 shrink-0 overflow-hidden">
+            <img
+              src={post.imageUrl}
+              alt={title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
+            {post.isPinned && (
+              <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/90 backdrop-blur-md text-indigo-700 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-lg">
                 <Pin className="w-3 h-3" />
                 <span>{lang === "th" ? "ปักหมุด" : "Pinned"}</span>
               </div>
             )}
-            {/* Category badge */}
-            <div className={cn("flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors", cfg.color, cfg.bg, cfg.border)}>
-              <CatIcon className="w-3.5 h-3.5" />
-              <span>{lang === "th" ? cfg.labelTh : cfg.labelEn}</span>
-            </div>
           </div>
-          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-md">
-            <Clock className="w-3.5 h-3.5" />
-            {formatDate(post.postedAt, lang)}
-          </span>
-        </div>
+        )}
 
-        {/* Title */}
-        <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-          {title}
-        </h3>
+        <CardContent className="p-5 flex-1 flex flex-col justify-between">
+          <div className="space-y-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Pinned badge (no image) */}
+                {post.isPinned && !post.imageUrl && (
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md">
+                    <Pin className="w-2.5 h-2.5" />
+                    <span>{lang === "th" ? "ปักหมุด" : "Pinned"}</span>
+                  </div>
+                )}
+                {/* Category badge */}
+                <div className={cn("flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border transition-colors", cfg.color, cfg.bg, cfg.border)}>
+                  <CatIcon className="w-3 h-3" />
+                  <span>{lang === "th" ? cfg.labelTh : cfg.labelEn}</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md">
+                <Clock className="w-3 h-3" />
+                {formatDate(post.postedAt, lang)}
+              </span>
+            </div>
 
-        {/* Content - takes available space, clamped */}
-        <p className={cn("text-[14px] text-slate-600 dark:text-slate-400 leading-relaxed flex-1", !expanded && "line-clamp-4")}>
-          {content}
-        </p>
+            {/* Title */}
+            <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-snug line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              {title}
+            </h3>
 
-        {/* Footer pushed to bottom */}
-        <div className="mt-auto">
+            {/* Content */}
+            <p className={cn(
+              "text-xs text-slate-500 dark:text-slate-400 leading-relaxed",
+              post.imageUrl ? "line-clamp-2" : "line-clamp-5"
+            )}>
+              {content}
+            </p>
+          </div>
+
           {/* Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2 text-[12px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-full">
-              <User className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 mt-3 shrink-0">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-full">
+              <User className="w-3 h-3 text-slate-400" />
               <span>{post.postedBy}</span>
             </div>
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="text-[12px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1.5 transition-all group/btn bg-indigo-50/50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-1.5 rounded-full"
-            >
-              {expanded
-                ? (lang === "th" ? "ย่อ" : "Show less")
-                : (lang === "th" ? "อ่านเพิ่มเติม" : "Read more")}
-              <ChevronRight className={cn("w-4 h-4 transition-transform duration-300", expanded ? "-rotate-90" : "group-hover/btn:translate-x-1")} />
-            </button>
+            <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 transition-all group/btn bg-indigo-50/50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-full">
+              {lang === "th" ? "อ่านเพิ่มเติม" : "Read more"}
+              <ChevronRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover/btn:translate-x-0.5" />
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* ── Attached Links (only show when expanded to keep card height consistent) ── */}
-          {expanded && (post.links ?? []).filter((l) => l.url).length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <LinkIcon className="w-3.5 h-3.5" />
-                {lang === "th" ? "เอกสาร/ลิงก์ที่แนบ" : "Attached Links"}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(post.links ?? []).filter((l) => l.url).map((link, i) => (
-                  <a
-                    key={i}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-bold border border-indigo-100 dark:border-indigo-800/50 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all group/link"
-                  >
-                    <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center group-hover/link:bg-indigo-600 group-hover/link:text-white transition-colors">
-                      <ExternalLink className="w-3 h-3 shrink-0" />
-                    </div>
-                    {lang === "th"
-                      ? (link.labelTh || link.labelEn || link.url)
-                      : (link.labelEn || link.labelTh || link.url)}
-                  </a>
-                ))}
-              </div>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl p-0 gap-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          {post.imageUrl && (
+            <div className="relative h-64 w-full overflow-hidden">
+              <img
+                src={post.imageUrl}
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/85 via-slate-900/10 to-transparent" />
             </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+          
+          <div className="p-6 space-y-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                {post.isPinned && (
+                  <div className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md">
+                    <Pin className="w-3 h-3" />
+                    <span>{lang === "th" ? "ปักหมุด" : "Pinned"}</span>
+                  </div>
+                )}
+                <div className={cn("flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border", cfg.color, cfg.bg, cfg.border)}>
+                  <CatIcon className="w-3.5 h-3.5" />
+                  <span>{lang === "th" ? cfg.labelTh : cfg.labelEn}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-3 py-1 rounded-md">
+                <Clock className="w-3.5 h-3.5" />
+                {formatDate(post.postedAt, lang)}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+                {title}
+              </h2>
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span>{lang === "th" ? "โดย" : "By"}</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                  {post.postedBy}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-[15px] text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-medium">
+              {content}
+            </div>
+
+            {/* Attached links */}
+            {(post.links ?? []).filter((l) => l.url).length > 0 && (
+              <div className="space-y-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  {lang === "th" ? "เอกสาร/ลิงก์ที่แนบ" : "Attached Links"}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(post.links ?? []).filter((l) => l.url).map((link, i) => (
+                    <a
+                      key={i}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-bold border border-indigo-100 dark:border-indigo-800/50 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all group/link"
+                    >
+                      <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center group-hover/link:bg-indigo-600 group-hover/link:text-white transition-colors">
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </div>
+                      {lang === "th"
+                        ? (link.labelTh || link.labelEn || link.url)
+                        : (link.labelEn || link.labelTh || link.url)}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -174,62 +228,77 @@ function SurveyCard({ survey, lang, onStart }: { survey: MockSurvey; lang: "th" 
       try { const d = new Date(survey.endDate.split("/").reverse().join("-")); return (d.getTime() - Date.now()) / 86400000 <= 7; }
       catch { return false; }
     })();
+
   return (
     <div
       onClick={onStart}
-      className="group relative flex flex-col gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/60 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md hover:shadow-indigo-500/8 transition-all duration-200 cursor-pointer"
+      className="group relative pt-6 pb-4 px-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-[linear-gradient(to_bottom,rgba(255,255,255,1)_0%,rgba(249,250,251,0.8)_100%)] dark:bg-[linear-gradient(to_bottom,rgba(15,23,42,0.85)_0%,rgba(30,41,59,0.7)_100%)] shadow-md hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1.5 hover:-rotate-[0.5deg] transition-all duration-500 cursor-pointer overflow-visible flex flex-col gap-3"
     >
-      <div className="flex items-center gap-3">
-        {/* Icon */}
-        <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
-          <ClipboardList className="w-[16px] h-[16px] text-indigo-600 dark:text-indigo-400" />
+      {/* Decorative Metallic binder clip */}
+      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-8 h-4.5 bg-gradient-to-b from-slate-200 to-slate-400 dark:from-slate-700 dark:to-slate-600 rounded-b-md shadow-md border-t border-white/20 dark:border-slate-800/40 flex items-center justify-center z-10">
+        <div className="w-4.5 h-1.5 rounded-full border border-slate-500/30 dark:border-slate-900/50 bg-slate-300 dark:bg-slate-800" />
+      </div>
+
+      <div className="flex items-start gap-3">
+        {/* Binder Page Outline Accent Icon */}
+        <div className="shrink-0 w-10 h-10 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 flex items-center justify-center border border-indigo-100/40 dark:border-indigo-900/30 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300 shadow-inner">
+          <ClipboardList className="w-5 h-5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors duration-300" />
         </div>
 
-        {/* Title + meta */}
+        {/* Title + meta info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">
             {lang === "th" ? survey.titleTh : survey.titleEn}
           </p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className={`text-[10px] font-medium flex items-center gap-1 ${isNearDeadline ? "text-red-400 dark:text-red-400" : "text-slate-400 dark:text-slate-500"}`}>
+          
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className={cn(
+              "text-[9px] font-semibold flex items-center gap-1.5 px-2 py-0.5 rounded-md border",
+              isNearDeadline 
+                ? "bg-rose-50 border-rose-100 text-rose-500 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400" 
+                : "bg-slate-50 border-slate-100 text-slate-400 dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-500"
+            )}>
               <Clock className="w-3 h-3" />
-              {survey.endDate && survey.endDate !== "—" ? survey.endDate : (lang === "th" ? "ไม่จำกัดเวลา" : "No deadline")}
+              {survey.endDate && survey.endDate !== "—" 
+                ? `${lang === "th" ? "ปิดรับ" : "Ends"}: ${survey.endDate}` 
+                : (lang === "th" ? "ไม่มีกำหนดปิด" : "No deadline")}
             </span>
+            {survey.surveyType === "anonymous" && (
+              <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md border bg-teal-50 border-teal-100 text-teal-600 dark:bg-teal-950/20 dark:border-teal-900/30 dark:text-teal-400">
+                {lang === "th" ? "นิรนาม" : "Anon"}
+              </span>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Status + progress */}
-        <div className="flex items-center gap-2 shrink-0">
-          {survey.status === "Active" ? (
-            <Badge className="h-[20px] text-[9px] font-semibold px-2.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 shadow-none">
-              <span className="relative flex h-1.5 w-1.5 mr-1.5">
-                <span className="animate-ping absolute inset-0 rounded-full bg-emerald-500 opacity-60" />
-                <span className="relative rounded-full h-1.5 w-1.5 bg-emerald-500" />
-              </span>
-              Active
-            </Badge>
-          ) : (
-            <Badge className="h-[20px] text-[9px] font-semibold px-2.5 rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-none">
-              {survey.status}
-            </Badge>
-          )}
-          <div className="relative w-8 h-8">
+      {/* Progress & friendly CTA section */}
+      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/50 mt-1">
+        {/* Response Count info */}
+        <div className="flex items-center gap-2">
+          <div className="relative w-8 h-8 flex items-center justify-center">
             <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="15" fill="none" stroke="#e2e8f0" strokeWidth="2.5" className="dark:stroke-slate-700" />
+              <circle cx="18" cy="18" r="15" fill="none" stroke="#f1f5f9" strokeWidth="3" className="dark:stroke-slate-800" />
               <circle
                 cx="18" cy="18" r="15" fill="none"
-                stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"
+                stroke="#6366f1" strokeWidth="3" strokeLinecap="round"
                 strokeDasharray={`${(pct / 100) * 94.2} 94.2`}
                 className="transition-all duration-1000"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-indigo-600 dark:text-indigo-400">
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-indigo-600 dark:text-indigo-400">
               {pct}%
             </span>
           </div>
-          <div className="w-6 h-6 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
-            <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-white" />
-          </div>
+          <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+            {lang === "th" ? "ความคืบหน้า" : "Progress"}
+          </span>
+        </div>
+
+        {/* Friendly CTA Button */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/50 group-hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-all duration-300 text-xs font-bold shadow-sm">
+          <span>{lang === "th" ? "ร่วมทำแบบสำรวจ" : "Take Survey"}</span>
+          <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
         </div>
       </div>
     </div>
@@ -283,7 +352,7 @@ function HomePage() {
       {/* ── Compact Corporate Hero Banner ── */}
       <div className="relative min-h-[170px] md:min-h-[200px] flex items-center overflow-hidden rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xl bg-slate-950 text-white">
         {/* Deep Corporate Gradient Base */}
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,#0f172a_0%,#1e2937_40%,#0f172a_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#080c1b_0%,#0f1b3d_50%,#162554_100%)]" />
         
         {/* Subtle Mesh */}
         <div 
@@ -295,11 +364,11 @@ function HomePage() {
         />
         
         {/* Accent Gradients */}
-        <div className="absolute -top-16 -right-12 w-80 h-80 rounded-full bg-gradient-to-br from-indigo-600/20 to-transparent blur-3xl" />
-        <div className="absolute -bottom-12 -left-8 w-64 h-64 rounded-full bg-gradient-to-tr from-teal-500/15 to-transparent blur-3xl" />
+        <div className="absolute -top-16 -right-12 w-80 h-80 rounded-full bg-gradient-to-br from-indigo-500/25 to-transparent blur-3xl animate-float-slow" />
+        <div className="absolute -bottom-12 -left-8 w-64 h-64 rounded-full bg-gradient-to-tr from-blue-500/20 to-transparent blur-3xl animate-float-delayed" />
 
         {/* Compact Abstract Visual (Right) */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden xl:block w-[120px] h-[120px] pointer-events-none">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden xl:block w-[120px] h-[120px] pointer-events-none animate-float-slow">
           <div className="absolute inset-0 rounded-full border border-white/10" />
           <div className="absolute inset-[14px] rounded-full border border-white/20" />
           <div className="absolute inset-[28px] rounded-full border border-white/30" />
@@ -316,17 +385,9 @@ function HomePage() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-tight text-balance max-w-[28ch]">
-            {lang === "th" 
-              ? "เสียงของคุณ คือพลังขององค์กร" 
-              : "Your Voice. Our Future."}
+          <h1 className="text-xl md:text-3xl font-extrabold tracking-tight leading-tight max-w-[28ch] bg-gradient-to-r from-white via-indigo-200 to-white bg-clip-text text-transparent animate-text-gradient">
+            Welcome to Real&Lo Website
           </h1>
-
-          <p className="mt-1 text-xs md:text-sm text-slate-400 max-w-md leading-snug">
-            {lang === "th" 
-              ? "ร่วมแบ่งปันความคิดเห็นเพื่อพัฒนาองค์กร ทุกเสียงมีคุณค่า" 
-              : "Share your voice to help shape a better workplace."}
-          </p>
 
           {/* Greeting + Compact CTAs */}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -454,24 +515,30 @@ function HomePage() {
         {/* ── Right Sidebar (sticky) ── */}
         <div className="space-y-6 sticky top-6 self-start">
 
-          {/* My Surveys */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 backdrop-blur-sm overflow-hidden shadow-lg shadow-slate-200/40 dark:shadow-black/20">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-950 text-white">
+          {/* My Surveys - Styled as a Bulletin Board (บอร์ดประชาสัมพันธ์) */}
+          <div className="relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 backdrop-blur-sm overflow-hidden shadow-xl shadow-slate-200/30 dark:shadow-black/20 flex flex-col">
+            {/* Top decorative clip hanger rail */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-500" />
+            
+            {/* Board Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-                  <ListTodo className="w-[18px] h-[18px]" />
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center border border-indigo-100/50 dark:border-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm">
+                  <ListTodo className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold tracking-tight">
+                  <h3 className="text-sm font-black tracking-tight uppercase">
                     {t("home.surveys")}
                   </h3>
-                  <p className="text-[10px] font-medium text-white/60 mt-0.5">
-                    {t("home.surveysDesc")}
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
+                    {lang === "th" ? "บอร์ดแบบสำรวจสำหรับพนักงาน" : "Employee Survey Board"}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="p-4 space-y-3">
+            
+            {/* Board Content (Displaying Document Memos) */}
+            <div className="p-5 bg-slate-50/30 dark:bg-slate-950/20 space-y-6">
               {surveys.length > 0 ? (
                 surveys.map((s) => (
                   <SurveyCard
@@ -482,7 +549,7 @@ function HomePage() {
                   />
                 ))
               ) : (
-                <div className="py-8 text-center text-sm text-slate-400">
+                <div className="py-12 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   {t("home.noSurveys")}
                 </div>
               )}

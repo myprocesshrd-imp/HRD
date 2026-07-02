@@ -679,20 +679,39 @@ function AdminDashboard() {
             )}
             <ResponsiveContainer width="100%" height="100%">
                {riskCats.length > 0 ? (
-               <RadarChart data={riskCats} cx="50%" cy="50%" outerRadius="80%">
+               <RadarChart data={riskCats} cx="50%" cy="50%" outerRadius="70%">
                 <PolarGrid stroke="#cbd5e1" strokeWidth={1} className="dark:opacity-10" />
                 <PolarAngleAxis 
                   dataKey="category" 
-                  tick={({ x, y, payload }: any) => {
+                  tick={({ x, y, payload, cx, cy }: any) => {
                     const cat = riskCats.find((c: any) => c.category === payload.value);
                     const isRisk = cat && cat.score < 3.0;
+
+                    const dx = x - cx;
+                    const dy = y - cy;
+                    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+                    
+                    // Push labels outwards by 14px
+                    const pushX = x + (dx / distance) * 14;
+                    const pushY = y + (dy / distance) * 10;
+
+                    // Determine text anchor dynamically based on angle/horizontal side
+                    let textAnchor: "start" | "end" | "middle" = "middle";
+                    if (dx > 10) {
+                      textAnchor = "start";
+                    } else if (dx < -10) {
+                      textAnchor = "end";
+                    }
+
                     return (
                       <text 
-                        x={x} y={y} 
-                        textAnchor="middle" 
+                        x={pushX} 
+                        y={pushY} 
+                        textAnchor={textAnchor} 
                         fontSize={9} 
                         fontWeight={700} 
                         fill={isRisk ? '#ef4444' : '#64748b'}
+                        dy={4}
                       >
                         {payload.value}{isRisk ? ' ⚠' : ''}
                       </text>

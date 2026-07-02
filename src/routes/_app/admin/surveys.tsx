@@ -7,6 +7,10 @@ import type { MockSurvey } from "@/services/api";
 import type { SurveySection } from "@/services/api";
 import { getSssMappings } from "@/services/api/sss";
 import type { SssQuestionMapping } from "@/services/api/sss";
+import { getDepartmentsWithId } from "@/services/api/departments";
+import { getBusinessUnits } from "@/services/api/business-units";
+import type { Department } from "@/services/api/departments";
+import type { BusinessUnit } from "@/services/api/business-units";
 import { DEMOGRAPHIC_FIELDS_REGISTRY } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,6 +109,8 @@ function SurveysAdmin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedDemo, setExpandedDemo] = useState<Record<string, boolean>>({});
   const [demoConstants, setDemoConstants] = useState<Record<string, string[]>>({});
+  const [departmentsWithBu, setDepartmentsWithBu] = useState<Department[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [sssMappings, setSssMappings] = useState<Map<string, SssQuestionMapping[]>>(new Map());
 
   const buildDefaultDemoFields = () => {
@@ -118,6 +124,25 @@ function SurveysAdmin() {
     });
     return fields;
   };
+
+  const buNameToIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    businessUnits.forEach(bu => map.set(bu.name_en, bu.id));
+    return map;
+  }, [businessUnits]);
+
+  const deptNamesByBuId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    departmentsWithBu.forEach(d => {
+      const ids = d.business_unit_ids ?? [];
+      ids.forEach(buId => {
+        const existing = map.get(buId) ?? [];
+        existing.push(d.name_en);
+        map.set(buId, existing);
+      });
+    });
+    return map;
+  }, [departmentsWithBu]);
 
   const canManageSurvey = (s: MockSurvey) => {
     if (!user) return false;
@@ -133,8 +158,10 @@ function SurveysAdmin() {
       getSurveys(),
       getQuestionBank(),
       getDemographicsConstants(),
-      getSssMappings()
-    ]).then(([s, q, c, sss]) => {
+      getSssMappings(),
+      getDepartmentsWithId(),
+      getBusinessUnits()
+    ]).then(([s, q, c, sss, deps, bus]) => {
       setSurveys(s);
       setSections(q);
       setDemoConstants({
@@ -146,6 +173,8 @@ function SurveysAdmin() {
         ageRange: c.ageRanges,
         tenure: c.tenure,
       });
+      setDepartmentsWithBu(deps);
+      setBusinessUnits(bus);
       const map = new Map<string, SssQuestionMapping[]>();
       sss.filter((m: SssQuestionMapping) => m.isActive).forEach((m: SssQuestionMapping) => {
         const existing = map.get(m.questionId) || [];
@@ -155,6 +184,24 @@ function SurveysAdmin() {
       setSssMappings(map);
     }).finally(() => setLoading(false));
   }, []);
+
+  // Sync department options when BU selection changes
+  useEffect(() => {
+    if (!editing?.demographicFields?.businessUnit || !editing?.demographicFields?.department) return;
+    const selBuNames = editing.demographicFields.businessUnit;
+    const selBuIds = selBuNames.map((b: string) => buNameToIdMap.get(b)).filter((id): id is string => !!id);
+    const validDepts = new Set<string>();
+    selBuIds.forEach(buId => {
+      (deptNamesByBuId.get(buId) ?? []).forEach(d => validDepts.add(d));
+    });
+    const newDepts = Array.from(validDepts);
+    if (newDepts.length !== editing.demographicFields.department.length) {
+      setEditing(prev => {
+        if (!prev) return prev;
+        return { ...prev, demographicFields: { ...prev.demographicFields!, department: newDepts } };
+      });
+    }
+  }, [editing?.demographicFields?.businessUnit]);
 
   const handleSave = async () => {
     if (!editing) return;
@@ -316,8 +363,8 @@ function SurveysAdmin() {
             </div>
             <div className="flex items-center gap-3.5 mt-1.5 flex-wrap">
                <Badge variant="outline" className="h-5.5 px-2.5 rounded-lg text-[10px] border-primary/20 text-primary font-bold uppercase bg-primary/5">
-                 {s.surveyType}
-               </Badge>
+                  {s.surveyType === "anonymous" ? t("surveys.typeAnonymous") : t("surveys.typeIdentified")}
+                </Badge>
                <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
                  <Users className="w-3.5 h-3.5" />
                  {lang === "th"
@@ -645,22 +692,31 @@ function SurveysAdmin() {
                         </div>
                         <div className="space-y-2">
                           {DEMOGRAPHIC_FIELDS_REGISTRY.map(f => {
-                            // Resolve options: prefer database constants if loaded
-                            const options = demoConstants[f.key] && demoConstants[f.key].length > 0
-                              ? demoConstants[f.key]
+                            const demoKey = f.key === "department" ? "departments" : f.key;
+                            const options = demoConstants[demoKey] && demoConstants[demoKey].length > 0
+                              ? demoConstants[demoKey]
                               : f.masterOptions;
 
-                            // If undefined, treat as all checked
+                            // Filter department options by selected business units
+                            const displayOptions = f.key === "department" && editing.demographicFields?.businessUnit?.length
+                              ? options.filter((o: string) => {
+                                  const selBuIds = editing.demographicFields!.businessUnit
+                                    .map((b: string) => buNameToIdMap.get(b))
+                                    .filter((id: string | undefined): id is string => !!id);
+                                  return selBuIds.some((buId: string) => (deptNamesByBuId.get(buId) ?? []).includes(o));
+                                })
+                              : options;
+
                             const isChecked = !editing.demographicFields || f.key in editing.demographicFields;
                             const isExpanded = !!expandedDemo[f.key];
-                            const selectedOpts = editing.demographicFields ? editing.demographicFields[f.key] || [] : [...options];
+                            const selectedOpts = editing.demographicFields ? editing.demographicFields[f.key] || [] : [...displayOptions];
                             
                             return (
                               <div key={f.key} className={cn("rounded-xl border transition-all overflow-hidden", isChecked ? "bg-white border-slate-200" : "bg-slate-50 border-slate-100")}>
                                 <div className="flex items-center gap-3 p-3 select-none">
                                   <Checkbox 
                                     checked={isChecked} 
-                                    onCheckedChange={() => toggleDemoField(f.key, options)} 
+                                    onCheckedChange={() => toggleDemoField(f.key, displayOptions)} 
                                     className="h-5 w-5 rounded-md data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600" 
                                   />
                                   <div className={cn("flex-1 text-[13px] font-bold", isChecked ? "text-slate-800" : "text-slate-400")}>
@@ -680,15 +736,15 @@ function SurveysAdmin() {
                                 {isChecked && isExpanded && (
                                   <div className="bg-slate-50 border-t border-slate-100 p-3 pt-2">
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("surveys.options")} ({selectedOpts.length}/{options.length})</span>
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("surveys.options")} ({selectedOpts.length}/{displayOptions.length})</span>
                                       <div className="flex items-center gap-2">
-                                        <button onClick={() => setAllDemoOptions(f.key, options, true)} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700">{t("surveys.selectAll")}</button>
+                                        <button onClick={() => setAllDemoOptions(f.key, displayOptions, true)} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700">{t("surveys.selectAll")}</button>
                                         <span className="text-slate-300">|</span>
-                                        <button onClick={() => setAllDemoOptions(f.key, options, false)} className="text-[10px] font-bold text-slate-500 hover:text-slate-700">{t("surveys.deselectAll")}</button>
+                                        <button onClick={() => setAllDemoOptions(f.key, displayOptions, false)} className="text-[10px] font-bold text-slate-500 hover:text-slate-700">{t("surveys.deselectAll")}</button>
                                       </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                      {options.map(opt => (
+                                      {displayOptions.map(opt => (
                                         <label key={opt} className="flex items-start gap-2 cursor-pointer group">
                                           <Checkbox 
                                             checked={selectedOpts.includes(opt)}

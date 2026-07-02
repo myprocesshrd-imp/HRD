@@ -190,10 +190,10 @@ function ResultsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-            {lang === "th" ? "ศูนย์บัญชาการข้อมูล" : "Intelligence Command"}
+            {lang === "th" ? "ผลสำรวจ" : "Survey Results"}
           </h1>
           <p className="text-[15px] font-medium text-slate-400">
-            {lang === "th" ? "วิเคราะห์ข้อมูลความผูกพันและประสิทธิภาพเชิงลึก" : "Strategic engagement and performance insights."}
+            {lang === "th" ? "วิเคราะห์ผลแบบสำรวจความผูกพันเชิงลึก" : "In-depth engagement survey analysis."}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -201,7 +201,7 @@ function ResultsPage() {
               <Share2 className="w-4.5 h-4.5 text-slate-400" /> {lang === "th" ? "แชร์" : "Share"}
            </Button>
            <Button className="h-10 px-6 rounded-xl bg-slate-900 dark:bg-primary text-white font-bold text-[11px] uppercase tracking-wider shadow-lg shadow-slate-900/10 dark:shadow-primary/10">
-              <Download className="w-4.5 h-4.5 mr-2" /> {lang === "th" ? "ส่งออกโปรโตคอล" : "Export Protocol"}
+              <Download className="w-4.5 h-4.5 mr-2" /> {lang === "th" ? "ส่งออกรายงาน" : "Export Report"}
            </Button>
         </div>
       </div>
@@ -326,10 +326,10 @@ function ResultsPage() {
                </div>
                <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5 truncate">
-                    {lang === "th" ? "ตัวอย่างทั้งหมด" : "Total Samples"}
+                     {lang === "th" ? "จำนวนผู้ตอบทั้งหมด" : "Total Respondents"}
                   </div>
                   <div className="text-[15px] font-bold text-slate-900 dark:text-white tracking-tight truncate">
-                    {stats.totalResponses} {lang === "th" ? "ข้อมูลที่ถูกต้อง" : "Valid Responses"}
+                     {stats.totalResponses} {lang === "th" ? "ผู้ตอบ" : "Respondents"}
                   </div>
                </div>
             </div>
@@ -348,28 +348,28 @@ function ResultsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
          {[
            { 
-             label: lang === "th" ? "ดัชนีความผูกพัน" : "Engagement Index", 
+             label: lang === "th" ? "คะแนนความผูกพัน" : "Engagement Index", 
              value: `${stats.avg.toFixed(2)}/5.00`, 
              icon: Zap, color: "text-primary", bg: "bg-primary/5", 
-             sub: lang === "th" ? "+0.4 จากก่อนหน้า" : "+0.4 vs Prev" 
+             sub: lang === "th" ? "+0.4 จากรอบก่อน" : "+0.4 vs Prev" 
            },
            { 
-             label: lang === "th" ? "อัตราการตอบ" : "Compliance Rate", 
+             label: lang === "th" ? "อัตราการตอบ" : "Response Rate", 
              value: `${stats.participation}%`, 
              icon: Target, color: "text-emerald-600", bg: "bg-emerald-50", 
              sub: `(${stats.totalResponses}/${stats.target} ${lang === "th" ? "คน" : "people"})` 
            },
            { 
-             label: lang === "th" ? "ความแน่นอนที่ดี" : "Favorable Certainty", 
+             label: lang === "th" ? "คะแนนเชิงบวก" : "Favorable Score", 
              value: `${distributionStats.favPercent}%`, 
              icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50", 
-             sub: lang === "th" ? "4-5 ดาว ดี" : "4-5 Stars Favorable" 
+             sub: lang === "th" ? "ระดับ 4-5 (ดีถึงดีมาก)" : "4-5 Stars Favorable" 
            },
            { 
-             label: lang === "th" ? "ความเสี่ยง" : "Unfavorable Risk", 
+             label: lang === "th" ? "คะแนนที่ต้องปรับปรุง" : "Needs Improvement", 
              value: `${distributionStats.unfavPercent}%`, 
              icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50", 
-             sub: lang === "th" ? "1-2 ดาว เสี่ยง" : "1-2 Stars Risk" 
+             sub: lang === "th" ? "ระดับ 1-2 (ต้องปรับปรุง)" : "1-2 Stars Risk" 
            },
          ].map(kpi => (
            <div key={kpi.label} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
@@ -397,10 +397,10 @@ function ResultsPage() {
                 </div>
                 <div>
                    <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
-                     {lang === "th" ? "วิวัฒนาการ Pulse ระดับผู้บริหาร" : "Executive Pulse Evolution"}
+                     {lang === "th" ? "แนวโน้มคะแนนความผูกพัน" : "Engagement Score Trend"}
                    </CardTitle>
                    <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
-                     {lang === "th" ? "เมตริกระดับมหภาค" : "Macro Engagement Metrics"}
+                     {lang === "th" ? "ภาพรวมเชิงสถิติ" : "Overview Statistics"}
                    </CardDescription>
                 </div>
              </div>
@@ -438,10 +438,10 @@ function ResultsPage() {
                 </div>
                 <div>
                    <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
-                     {lang === "th" ? "เมทริกซ์ความมั่นคง" : "Stability Matrix"}
+                     {lang === "th" ? "เรดาร์หมวดหมู่" : "Category Radar"}
                    </CardTitle>
                    <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
-                     {lang === "th" ? "เรดาร์ข้ามหมวด" : "Cross-Category Radar"}
+                     {lang === "th" ? "เปรียบเทียบระหว่างหมวดหมู่" : "Cross-Category Comparison"}
                    </CardDescription>
                 </div>
              </div>
@@ -469,10 +469,10 @@ function ResultsPage() {
               </div>
               <div>
                  <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
-                   {lang === "th" ? "เปรียบเทียบคะแนนแต่ละแผนก" : "Department Score Comparison"}
+                    {lang === "th" ? "เปรียบเทียบคะแนนรายฝ่าย" : "Department Score Comparison"}
                  </CardTitle>
                  <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
-                   {lang === "th" ? "การเปรียบเทียบหมวดหมู่" : "Inter-category Comparison"}
+                    {lang === "th" ? "แยกตามหมวดหมู่คำถาม" : "Breakdown by Question Category"}
                  </CardDescription>
               </div>
            </div>
