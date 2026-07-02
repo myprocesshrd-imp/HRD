@@ -13,7 +13,7 @@ import {
   Home, Pin, Calendar, Tag, User, ChevronRight, ClipboardList,
   Megaphone, Shield, Cpu, Sparkles, BookOpen, AlertTriangle,
   Clock, ArrowRight, FileEdit, Search, ExternalLink, Link as LinkIcon,
-  CheckCircle2, BarChart3, ListTodo,
+  CheckCircle2, BarChart3, ListTodo, CalendarDays, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -220,88 +220,73 @@ function PostCard({ post, lang }: { post: BulletinPost; lang: "th" | "en" }) {
   );
 }
 
-// ── Survey Mini Card ──
+// ── Survey Mini Card (matches CampaignInventory design) ──
 function SurveyCard({ survey, lang, onStart }: { survey: MockSurvey; lang: "th" | "en"; onStart: () => void }) {
-  const pct = survey.target > 0 ? Math.min(100, Math.round((survey.responses / survey.target) * 100)) : 0;
-  const isNearDeadline =
-    survey.endDate && survey.endDate !== "—" && (() => {
-      try { const d = new Date(survey.endDate.split("/").reverse().join("-")); return (d.getTime() - Date.now()) / 86400000 <= 7; }
-      catch { return false; }
-    })();
-
   return (
-    <div
+    <Card
       onClick={onStart}
-      className="group relative pt-6 pb-4 px-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-[linear-gradient(to_bottom,rgba(255,255,255,1)_0%,rgba(249,250,251,0.8)_100%)] dark:bg-[linear-gradient(to_bottom,rgba(15,23,42,0.85)_0%,rgba(30,41,59,0.7)_100%)] shadow-md hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1.5 hover:-rotate-[0.5deg] transition-all duration-500 cursor-pointer overflow-visible flex flex-col gap-3"
+      className="group relative overflow-hidden bg-white dark:bg-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-800 hover:border-primary/30 hover:shadow-lg transition-all duration-300 cursor-pointer rounded-2xl"
     >
-      {/* Decorative Metallic binder clip */}
-      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-8 h-4.5 bg-gradient-to-b from-slate-200 to-slate-400 dark:from-slate-700 dark:to-slate-600 rounded-b-md shadow-md border-t border-white/20 dark:border-slate-800/40 flex items-center justify-center z-10">
-        <div className="w-4.5 h-1.5 rounded-full border border-slate-500/30 dark:border-slate-900/50 bg-slate-300 dark:bg-slate-800" />
+      {/* Decorative watermark */}
+      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
+        <ClipboardList className="w-16 h-16" />
       </div>
 
-      <div className="flex items-start gap-3">
-        {/* Binder Page Outline Accent Icon */}
-        <div className="shrink-0 w-10 h-10 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 flex items-center justify-center border border-indigo-100/40 dark:border-indigo-900/30 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300 shadow-inner">
-          <ClipboardList className="w-5 h-5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors duration-300" />
+      <CardContent className="p-5 space-y-4 relative">
+        {/* Icon + Status Badge */}
+        <div className="flex items-start justify-between">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-primary group-hover:scale-105 transition-all shadow-sm border border-slate-100 dark:border-slate-700">
+            <ClipboardList className="w-5 h-5" />
+          </div>
+          <Badge variant={survey.status === "Active" ? "default" : "secondary"} className="h-5 text-[9px] font-bold uppercase tracking-wider px-2.5 rounded-full">
+            {survey.status}
+          </Badge>
         </div>
 
-        {/* Title + meta info */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">
+        {/* Title + Meta */}
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-bold tracking-tight group-hover:text-primary transition-colors leading-snug line-clamp-2">
             {lang === "th" ? survey.titleTh : survey.titleEn}
-          </p>
-          
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className={cn(
-              "text-[9px] font-semibold flex items-center gap-1.5 px-2 py-0.5 rounded-md border",
-              isNearDeadline 
-                ? "bg-rose-50 border-rose-100 text-rose-500 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400" 
-                : "bg-slate-50 border-slate-100 text-slate-400 dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-500"
+          </h3>
+          <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3">
+            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+              <ListChecks className="w-3.5 h-3.5 text-primary" />
+              {survey.sectionIds.length} {lang === "th" ? "หมวดหมู่" : "Categories"}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+              <CalendarDays className="w-3.5 h-3.5 text-primary" />
+              {lang === "th" ? "สิ้นสุด" : "Ends"} {survey.endDate}
+            </div>
+            <Badge variant="outline" className={cn(
+              "h-5 text-[8px] font-bold uppercase tracking-widest rounded-lg border",
+              survey.surveyType === "anonymous" ? "border-indigo-200 bg-indigo-50 text-indigo-600" : "border-primary/20 bg-primary/5 text-primary"
             )}>
-              <Clock className="w-3 h-3" />
-              {survey.endDate && survey.endDate !== "—" 
-                ? `${lang === "th" ? "ปิดรับ" : "Ends"}: ${survey.endDate}` 
-                : (lang === "th" ? "ไม่มีกำหนดปิด" : "No deadline")}
-            </span>
-            {survey.surveyType === "anonymous" && (
-              <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md border bg-teal-50 border-teal-100 text-teal-600 dark:bg-teal-950/20 dark:border-teal-900/30 dark:text-teal-400">
-                {lang === "th" ? "นิรนาม" : "Anon"}
-              </span>
-            )}
+              {survey.surveyType === "anonymous"
+                ? (lang === "th" ? "ไม่ระบุตัวตน" : "Anonymous")
+                : (lang === "th" ? "ระบุตัวตน" : "Identified")}
+            </Badge>
           </div>
         </div>
-      </div>
 
-      {/* Progress & friendly CTA section */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/50 mt-1">
-        {/* Response Count info */}
-        <div className="flex items-center gap-2">
-          <div className="relative w-8 h-8 flex items-center justify-center">
-            <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="15" fill="none" stroke="#f1f5f9" strokeWidth="3" className="dark:stroke-slate-800" />
-              <circle
-                cx="18" cy="18" r="15" fill="none"
-                stroke="#6366f1" strokeWidth="3" strokeLinecap="round"
-                strokeDasharray={`${(pct / 100) * 94.2} 94.2`}
-                className="transition-all duration-1000"
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-indigo-600 dark:text-indigo-400">
-              {pct}%
-            </span>
+        {/* Avatar stack + CTA */}
+        <div className="pt-1 flex items-center justify-between gap-3">
+          <div className="flex -space-x-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shadow-sm">
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${survey.id}${i}`} alt="user" className="w-full h-full object-cover" />
+              </div>
+            ))}
+            <div className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 bg-primary/10 text-primary text-[8px] font-bold flex items-center justify-center shadow-sm">
+              +{survey.responses}
+            </div>
           </div>
-          <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
-            {lang === "th" ? "ความคืบหน้า" : "Progress"}
-          </span>
+          <Button size="sm" className="h-8 px-5 rounded-xl font-bold uppercase tracking-wider text-[10px] shadow-md group-hover:bg-primary group-hover:shadow-primary/20 transition-all">
+            {lang === "th" ? "เริ่มทำแบบสำรวจ" : "Start Survey"}
+            <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
+          </Button>
         </div>
-
-        {/* Friendly CTA Button */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/50 group-hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-all duration-300 text-xs font-bold shadow-sm">
-          <span>{lang === "th" ? "ร่วมทำแบบสำรวจ" : "Take Survey"}</span>
-          <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

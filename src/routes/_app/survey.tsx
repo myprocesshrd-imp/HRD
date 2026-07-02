@@ -133,7 +133,9 @@ function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => voi
                     "h-6 text-[9px] font-bold uppercase tracking-widest rounded-lg border",
                     s.surveyType === "anonymous" ? "border-indigo-200 bg-indigo-50 text-indigo-600" : "border-primary/20 bg-primary/5 text-primary"
                   )}>
-                    {s.surveyType}
+                    {s.surveyType === "anonymous"
+                      ? (lang === "th" ? "ไม่ระบุตัวตน" : "Anonymous")
+                      : (lang === "th" ? "ระบุตัวตน" : "Identified")}
                   </Badge>
                 </div>
               </div>

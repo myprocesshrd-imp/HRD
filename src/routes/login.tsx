@@ -48,7 +48,7 @@ function LoginPage() {
   useEffect(() => {
     setHydrated(true);
     if (isAuthenticated) {
-      navigate({ to: "/dashboard", replace: true });
+      navigate({ to: "/home", replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -72,7 +72,7 @@ function LoginPage() {
     try {
       const u = await login(employeeCode, password);
       toast.success(lang === "th" ? `ยินดีต้อนรับกลับมา, ${u.nameTh}` : `Welcome back, ${u.nameEn}`);
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/home" });
     } catch {
       setError(t("auth.invalid"));
       const logs = getLogs();

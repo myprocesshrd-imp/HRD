@@ -622,7 +622,7 @@ function AdminDashboard() {
                          <div className="flex items-start justify-between gap-3 mb-1">
                             <div className="flex items-center gap-2">
                                {item.type === 'anonymous' ? (
-                                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400" title="Anonymous">
+                                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400" title={lang === "th" ? "ไม่ระบุตัวตน" : "Anonymous"}>
                                      <UserCheck className="w-3.5 h-3.5" />
                                   </div>
                                ) : (

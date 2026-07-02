@@ -13,6 +13,6 @@ export const Route = createFileRoute("/")({
       // If redirect was thrown, rethrow it
       if (e && typeof e === "object" && "isRedirect" in e) throw e;
     }
-    throw redirect({ to: "/dashboard" });
+    throw redirect({ to: "/home" });
   },
 });
