@@ -3,65 +3,330 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { 
-  Users, BarChart3, TrendingUp, Calendar, 
-  ArrowRight, MessageSquare, 
-  Activity, Target, Zap, Brain, Shield,
-  Globe, Compass, Database, Terminal, Clock,
-  ChevronRight, Building2, Layers, History, Star, Filter,
-  Heart, UserCheck, Fingerprint, ZapOff, AlertTriangle, CheckCircle2
+import {
+  Users, BarChart3, TrendingUp, Calendar,
+  ArrowRight, MessageSquare,
+  Activity, Target, Shield,
+  Compass, Database, Terminal,
+  Star, Filter,
+  Heart, AlertTriangle, CheckCircle2,
+  Award, ArrowUpRight, ArrowDownRight, RefreshCw
 } from "lucide-react";
-import { 
+import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend,
-  BarChart, Bar
+  BarChart, Bar, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, Legend
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { useEffect, useState, useMemo } from "react";
-import { 
-  getCategoryScores, 
-  getEngagementTrend, 
-  getEngagementByDept, 
-  getHeatmapData, 
-  getRecentSubmissions
-} from "@/services/api/analytics";
-import { getSections, getSurveys, type SurveySection, type MockSurvey } from "@/services/api/surveys";
-import { 
-  Tooltip as UITooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { getSurveys, type MockSurvey } from "@/services/api/surveys";
+import { getDepartments } from "@/services/api/departments";
+import { getBusinessUnits } from "@/services/api/business-units";
+import { getDemographicOptions, type DemographicOption } from "@/services/api/demographic-options";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
 });
 
-const PIE_COLORS = [
-  "#3b82f6", // Blue
-  "#10b981", // Emerald
-  "#8b5cf6", // Violet
-  "#f59e0b", // Amber
-  "#f43f5e", // Rose
-  "#06b6d4", // Cyan
-  "#ec4899"  // Pink
-];
+// ── Types ──────────────────────────────────────────────────────────────────
+interface SectionStat {
+  sectionId: string;
+  sectionCode: string;
+  titleEn: string;
+  titleTh: string;
+  score: number;
+  count: number;
+}
 
+interface DemographicStat {
+  label: string;
+  score: number;
+  count: number;
+}
+
+// radar data: { dimension: string, [group]: score, ... }
+type DimensionByGroupRow = Record<string, string | number>;
+
+interface DashboardData {
+  totalResponses: number;
+  totalTarget: number;
+  participationRate: number;
+  overallScore: number;
+  sectionStats: SectionStat[];
+  ageStats: DemographicStat[];
+  levelStats: DemographicStat[];
+  trendData: { date: string; score: number }[];
+  /** Radar data: each row = one section, columns = age groups */
+  ageSectionRadar: DimensionByGroupRow[];
+  ageSectionGroups: string[];
+  /** Radar data: each row = one section, columns = job levels */
+  levelSectionRadar: DimensionByGroupRow[];
+  levelSectionGroups: string[];
+}
+
+// ── Helper: fetch full analytics from Supabase in one go ──────────────────
+async function fetchAnalyticsData(filters: {
+  surveyId: string;
+  dept: string;
+  bu: string;
+  ageRange: string;
+  tenure: string;
+  gender: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+}): Promise<{
+  responses: any[];
+  answers: any[];
+}> {
+  // Build survey_responses query
+  let respQuery = supabaseAdmin
+    .from("survey_responses")
+    .select(`
+      id,
+      survey_id,
+      created_at,
+      demographics,
+      response_answers(
+        numeric_value,
+        questions(
+          id,
+          section_id,
+          sections(id, code, title_en, title_th)
+        )
+      )
+    `)
+    .eq("status", "completed");
+
+  if (filters.surveyId !== "all") respQuery = respQuery.eq("survey_id", filters.surveyId);
+  if (filters.dept !== "all") respQuery = respQuery.eq("demographics->>department", filters.dept);
+  if (filters.bu !== "all") respQuery = respQuery.eq("demographics->>businessUnit", filters.bu);
+  if (filters.ageRange !== "all") respQuery = respQuery.eq("demographics->>ageRange", filters.ageRange);
+  if (filters.tenure !== "all") respQuery = respQuery.eq("demographics->>tenure", filters.tenure);
+  if (filters.gender !== "all") respQuery = respQuery.eq("demographics->>gender", filters.gender);
+  if (filters.location !== "all") respQuery = respQuery.eq("demographics->>location", filters.location);
+  if (filters.startDate) respQuery = respQuery.gte("created_at", filters.startDate);
+  if (filters.endDate) respQuery = respQuery.lte("created_at", filters.endDate + "T23:59:59");
+
+  const { data: responses, error } = await respQuery;
+  if (error) {
+    console.error("Dashboard fetch error:", error);
+    return { responses: [], answers: [] };
+  }
+  return { responses: responses || [], answers: [] };
+}
+
+// ── Compute analytics from raw responses ──────────────────────────────────
+function computeStats(
+  responses: any[],
+  totalTarget: number
+): DashboardData {
+  const sectionMap: Record<string, { titleEn: string; titleTh: string; code: string; sum: number; count: number }> = {};
+  const ageMap: Record<string, { sum: number; count: number }> = {};
+  const levelMap: Record<string, { sum: number; count: number }> = {};
+  const dayMap: Record<string, { sum: number; count: number }> = {};
+
+  // Section × Age group breakdown
+  const ageSectionMap: Record<string, Record<string, { sum: number; count: number }>> = {};
+  // Section × Level breakdown
+  const levelSectionMap: Record<string, Record<string, { sum: number; count: number }>> = {};
+  // section metadata for radar labels
+  const sectionMeta: Record<string, { titleEn: string; titleTh: string }> = {};
+
+  let globalSum = 0;
+  let globalCount = 0;
+
+  for (const resp of responses) {
+    const answers: any[] = resp.response_answers || [];
+    let respSum = 0;
+    let respCount = 0;
+
+    for (const ans of answers) {
+      if (ans.numeric_value === null || ans.numeric_value === undefined) continue;
+      const val = Number(ans.numeric_value);
+      const q = ans.questions;
+      if (!q) continue;
+      const sec = q.sections;
+      if (!sec) continue;
+
+      const sid = sec.id;
+      if (!sectionMap[sid]) {
+        sectionMap[sid] = {
+          titleEn: sec.title_en || sec.code,
+          titleTh: sec.title_th || sec.code,
+          code: sec.code,
+          sum: 0,
+          count: 0
+        };
+      }
+      sectionMap[sid].sum += val;
+      sectionMap[sid].count += 1;
+      sectionMeta[sid] = { titleEn: sec.title_en || sec.code, titleTh: sec.title_th || sec.code };
+
+      globalSum += val;
+      globalCount += 1;
+      respSum += val;
+      respCount += 1;
+
+      // Section × demographic breakdown
+      if (resp.demographics) {
+        const dem = resp.demographics as Record<string, string>;
+        const age = dem.ageRange;
+        const lvl = dem.level;
+
+        if (age) {
+          if (!ageSectionMap[sid]) ageSectionMap[sid] = {};
+          if (!ageSectionMap[sid][age]) ageSectionMap[sid][age] = { sum: 0, count: 0 };
+          ageSectionMap[sid][age].sum += val;
+          ageSectionMap[sid][age].count += 1;
+        }
+        if (lvl) {
+          if (!levelSectionMap[sid]) levelSectionMap[sid] = {};
+          if (!levelSectionMap[sid][lvl]) levelSectionMap[sid][lvl] = { sum: 0, count: 0 };
+          levelSectionMap[sid][lvl].sum += val;
+          levelSectionMap[sid][lvl].count += 1;
+        }
+      }
+    }
+
+    // Per-response score for demographic breakdown
+    const rScore = respCount > 0 ? respSum / respCount : 0;
+    if (rScore > 0 && resp.demographics) {
+      const dem = resp.demographics as Record<string, string>;
+
+      // Age breakdown
+      const age = dem.ageRange;
+      if (age) {
+        if (!ageMap[age]) ageMap[age] = { sum: 0, count: 0 };
+        ageMap[age].sum += rScore;
+        ageMap[age].count += 1;
+      }
+
+      // Level breakdown
+      const lvl = dem.level;
+      if (lvl) {
+        if (!levelMap[lvl]) levelMap[lvl] = { sum: 0, count: 0 };
+        levelMap[lvl].sum += rScore;
+        levelMap[lvl].count += 1;
+      }
+
+      // Trend breakdown
+      const day = (resp.created_at || "").split("T")[0];
+      if (day) {
+        if (!dayMap[day]) dayMap[day] = { sum: 0, count: 0 };
+        dayMap[day].sum += rScore;
+        dayMap[day].count += 1;
+      }
+    }
+  }
+
+  const overallScore = globalCount > 0 ? Number((globalSum / globalCount).toFixed(2)) : 0;
+  const participationRate = totalTarget > 0
+    ? Math.min(100, Math.round((responses.length / totalTarget) * 100))
+    : responses.length > 0 ? 100 : 0;
+
+  // Section stats sorted by score desc (exclude "comment/feedback" sections)
+  const sectionStats: SectionStat[] = Object.entries(sectionMap)
+    .map(([id, s]) => ({
+      sectionId: id,
+      sectionCode: s.code,
+      titleEn: s.titleEn,
+      titleTh: s.titleTh,
+      score: Number((s.sum / s.count).toFixed(2)),
+      count: s.count
+    }))
+    .filter(s => s.count > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const ageStats: DemographicStat[] = Object.entries(ageMap)
+    .map(([label, s]) => ({
+      label,
+      score: Number((s.sum / s.count).toFixed(2)),
+      count: s.count
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const levelStats: DemographicStat[] = Object.entries(levelMap)
+    .map(([label, s]) => ({
+      label,
+      score: Number((s.sum / s.count).toFixed(2)),
+      count: s.count
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const trendData = Object.entries(dayMap)
+    .map(([date, s]) => ({ date, score: Number((s.sum / s.count).toFixed(2)) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Build radar data: section × age
+  const ageSectionGroups = Array.from(
+    new Set(Object.values(ageSectionMap).flatMap(g => Object.keys(g)))
+  ).sort();
+  const ageSectionRadar: DimensionByGroupRow[] = sectionStats.map(sec => {
+    const row: DimensionByGroupRow = {
+      dimension: sec.titleEn,
+      dimensionTh: sec.titleTh
+    };
+    for (const grp of ageSectionGroups) {
+      const g = ageSectionMap[sec.sectionId]?.[grp];
+      row[grp] = g ? Number((g.sum / g.count).toFixed(2)) : 0;
+    }
+    return row;
+  });
+
+  // Build radar data: section × level
+  const levelSectionGroups = Array.from(
+    new Set(Object.values(levelSectionMap).flatMap(g => Object.keys(g)))
+  ).sort();
+  const levelSectionRadar: DimensionByGroupRow[] = sectionStats.map(sec => {
+    const row: DimensionByGroupRow = {
+      dimension: sec.titleEn,
+      dimensionTh: sec.titleTh
+    };
+    for (const grp of levelSectionGroups) {
+      const g = levelSectionMap[sec.sectionId]?.[grp];
+      row[grp] = g ? Number((g.sum / g.count).toFixed(2)) : 0;
+    }
+    return row;
+  });
+
+  return {
+    totalResponses: responses.length,
+    totalTarget,
+    participationRate,
+    overallScore,
+    sectionStats,
+    ageStats,
+    levelStats,
+    trendData,
+    ageSectionRadar,
+    ageSectionGroups,
+    levelSectionRadar,
+    levelSectionGroups,
+  };
+}
+
+// ── Employee dashboard (simple) ────────────────────────────────────────────
 function EmployeeDashboard() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [firstActiveSurveyId, setFirstActiveSurveyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSurveys().then((data) => {
+      const active = data.filter((s) => s.status === "Active");
+      if (active.length > 0) {
+        setFirstActiveSurveyId(active[0].id);
+      }
+    });
+  }, []);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-10">
-      
-      {/* ── Employee Hero ── */}
       <div className="flex items-start justify-between gap-6 pb-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
@@ -72,41 +337,38 @@ function EmployeeDashboard() {
               {lang === "th" ? `ยินดีต้อนรับ, ${user?.nameTh}` : `Welcome back, ${user?.nameEn}`}
             </h1>
           </div>
-          <p className="text-[15px] font-medium text-slate-400 ml-13">
+          <p className="text-[15px] font-medium text-slate-400">
             {t("dash.employee.heroSubtitle")}
           </p>
         </div>
-        <div className="flex items-center">
-          <Button
-            size="lg"
-            onClick={() => navigate({ to: "/survey" })}
-            className="rounded-xl font-bold text-[13px] uppercase tracking-wider transition-all group/btn shadow-md"
-          >
-             {t("dash.employee.startSurvey")}
-             <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
-          </Button>
-        </div>
+        <Button
+          size="lg"
+          onClick={() => {
+            if (firstActiveSurveyId) {
+              navigate({ to: "/survey", search: { id: firstActiveSurveyId } });
+            } else {
+              navigate({ to: "/" });
+            }
+          }}
+          className="rounded-xl font-bold text-[13px] uppercase tracking-wider transition-all group/btn shadow-md"
+        >
+          {t("dash.employee.startSurvey")}
+          <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+        </Button>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {[
-          { labelKey: "dash.employee.kpi1Label" as const, value: "12", icon: Target, color: "text-primary dark:text-primary", bg: "bg-primary/5 dark:bg-primary/10" },
-          { labelKey: "dash.employee.kpi2Label" as const, value: lang === "th" ? "4 รอบ" : "4 Cycles", icon: Activity, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-          { labelKey: "dash.employee.kpi3Label" as const, value: lang === "th" ? "สูง" : "High", icon: MessageSquare, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-500/10" },
+          { labelKey: "dash.employee.kpi1Label" as const, value: "12", icon: Target, color: "text-primary", bg: "bg-primary/5" },
+          { labelKey: "dash.employee.kpi2Label" as const, value: lang === "th" ? "4 รอบ" : "4 Cycles", icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+          { labelKey: "dash.employee.kpi3Label" as const, value: lang === "th" ? "สูง" : "High", icon: MessageSquare, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-500/10" },
         ].map((kpi) => (
-          <div key={kpi.labelKey} className="flex items-center gap-5 p-6 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm group hover:shadow-md transition-all">
-            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", kpi.bg, kpi.color)}>
+          <div key={kpi.labelKey} className="flex items-center gap-5 p-6 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm">
+            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", kpi.bg, kpi.color)}>
               <kpi.icon className="w-7 h-7" />
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{t(kpi.labelKey)}</div>
-              <div className="flex items-baseline gap-2">
-                <div className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{kpi.value}</div>
-                <div className="text-[10px] font-bold text-emerald-500 flex items-center gap-0.5">
-                  <TrendingUp className="w-3 h-3" />
-                  +12%
-                </div>
-              </div>
+              <div className="text-xl font-bold text-slate-900 dark:text-white">{kpi.value}</div>
             </div>
           </div>
         ))}
@@ -115,815 +377,953 @@ function EmployeeDashboard() {
   );
 }
 
+// ── Score color helpers ────────────────────────────────────────────────────
+function scoreColor(score: number) {
+  if (score >= 4.0) return "#10b981";
+  if (score >= 3.0) return "#6366f1";
+  if (score >= 2.0) return "#f59e0b";
+  return "#f43f5e";
+}
+
+// ── Admin Analytics Dashboard ──────────────────────────────────────────────
 function AdminDashboard() {
-  const { t, lang } = useI18n();
+  const { lang } = useI18n();
+
+  // All lookup data
   const [surveys, setSurveys] = useState<MockSurvey[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<string[]>([]);
+  const [demoOptions, setDemoOptions] = useState<DemographicOption[]>([]);
+
+  // Filters
   const [selectedSurvey, setSelectedSurvey] = useState("all");
-  const [selectedYear, setSelectedYear] = useState("2026");
+  const [selectedDept, setSelectedDept] = useState("all");
+  const [selectedBU, setSelectedBU] = useState("all");
+  const [selectedAge, setSelectedAge] = useState("all");
+  const [selectedTenure, setSelectedTenure] = useState("all");
+  const [selectedGender, setSelectedGender] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const [trendData, setTrendData] = useState<any[]>([]);
-  const [realCats, setRealCats] = useState<any[]>([]);
-  const [engagementByDept, setEngagementByDept] = useState<any[]>([]);
-  const [allSections, setAllSections] = useState<SurveySection[]>([]);
+  // Data
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [heatmapData, setHeatmapData] = useState<any[]>([]);
-  const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
 
-  // Cell click dialog state
-  const [selectedHeatmapCell, setSelectedHeatmapCell] = useState<{
-    dept: string;
-    sectionCode: string;
-    value: number;
-    sectionTitle: string;
-    questions: any[];
-  } | null>(null);
-
-  const loadData = async (surveyId: string, year: string) => {
-    setLoading(true);
-    try {
-      const [trend, cats, depts, heatmap, sectionsRes, recent] = await Promise.all([
-        getEngagementTrend(surveyId),
-        getCategoryScores(surveyId),
-        getEngagementByDept(surveyId),
-        getHeatmapData(surveyId),
-        getSections(),
-        getRecentSubmissions(8, surveyId),
-      ]);
-
-      let filteredTrend = trend;
-      if (year === "2025") {
-        filteredTrend = [
-          { period: "2025-05-01", score: 3.5 },
-          { period: "2025-06-01", score: 3.8 },
-          { period: "2025-07-01", score: 3.6 },
-          { period: "2025-08-01", score: 3.9 },
-          { period: "2025-09-01", score: 4.1 },
-          { period: "2025-10-01", score: 4.0 },
-          { period: "2025-11-01", score: 4.2 },
-          { period: "2025-12-01", score: 4.0 }
-        ];
-      } else if (year === "2026") {
-        filteredTrend = trend.filter(t => t.period.startsWith("2026"));
-      }
-
-      setTrendData(filteredTrend);
-      setRealCats(cats);
-      setEngagementByDept(depts);
-      setHeatmapData(heatmap);
-      setAllSections(sectionsRes);
-      setRecentSubmissions(recent);
-    } catch (err) {
-      console.error("Dashboard data load error:", err);
-    } finally {
-      setTimeout(() => setLoading(false), 300);
-    }
-  };
-
+  // Load lookups once
   useEffect(() => {
-    async function loadInitial() {
+    async function loadLookups() {
       try {
-        const s = await getSurveys();
+        const [s, d, bu, opts] = await Promise.all([
+          getSurveys(),
+          getDepartments(),
+          getBusinessUnits(),
+          getDemographicOptions(),
+        ]);
         setSurveys(s);
-        await loadData("all", "2026");
-      } catch (err) {
-        console.error(err);
+        setDepartments(d);
+        setBusinessUnits((bu as any[]).map((b) => b.name_en || b.name || "").filter(Boolean));
+        setDemoOptions(opts);
+      } catch (e) {
+        console.error("Lookup load error:", e);
       }
     }
-    loadInitial();
+    loadLookups();
   }, []);
 
-  const sectionCodes = useMemo(() => {
-    if (heatmapData.length === 0) return [];
-    const codes = new Set<string>();
-    heatmapData.forEach(row => {
-      Object.keys(row).forEach(k => {
-        if (k !== 'dept') codes.add(k);
+  const totalTarget = useMemo(() => {
+    if (selectedSurvey === "all") return surveys.reduce((s, sv) => s + (sv.target || 0), 0) || 0;
+    return surveys.find(s => s.id === selectedSurvey)?.target || 0;
+  }, [surveys, selectedSurvey]);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { responses } = await fetchAnalyticsData({
+        surveyId: selectedSurvey,
+        dept: selectedDept,
+        bu: selectedBU,
+        ageRange: selectedAge,
+        tenure: selectedTenure,
+        gender: selectedGender,
+        location: selectedLocation,
+        startDate,
+        endDate,
       });
-    });
-    return Array.from(codes).sort();
-  }, [heatmapData]);
-
-  const pulseIndex = useMemo(() => {
-    if (realCats.length === 0) return 0;
-    return (realCats.reduce((acc, c) => acc + c.score, 0) / realCats.length).toFixed(2);
-  }, [realCats]);
-
-  const riskCats = useMemo(() => realCats.filter((c: any) => c.score < 3.0), [realCats]);
-
-  // Overall Engagement Score + Response Rate (for selected survey or all)
-  const overallStats = useMemo(() => {
-    if (!surveys || surveys.length === 0) {
-      const score = typeof pulseIndex === "string" ? parseFloat(pulseIndex) : (pulseIndex || 0);
-      return { engagementScore: score, responseRate: 0, totalResponses: 0, totalTarget: 0 };
+      setData(computeStats(responses, totalTarget));
+    } catch (e) {
+      console.error("Dashboard load error:", e);
+    } finally {
+      setLoading(false);
     }
-    const filtered = selectedSurvey === "all"
-      ? surveys
-      : surveys.filter((s) => s.id === selectedSurvey);
-    const totalResponses = filtered.reduce((sum, s) => sum + (s.responses || 0), 0);
-    const totalTarget = filtered.reduce((sum, s) => sum + (s.target || 0), 0);
-    const rate = totalTarget > 0 ? Math.round((totalResponses / totalTarget) * 100) : 0;
-    const score = typeof pulseIndex === "string" ? parseFloat(pulseIndex) : (pulseIndex || 0);
-    return {
-      engagementScore: Number(score.toFixed(2)),
-      responseRate: rate,
-      totalResponses,
-      totalTarget: totalTarget || 0,
-    };
-  }, [surveys, selectedSurvey, pulseIndex]);
+  }, [selectedSurvey, selectedDept, selectedBU, selectedAge, selectedTenure, selectedGender, selectedLocation, startDate, endDate, totalTarget]);
 
-  const handleHeatmapCellClick = async (dept: string, sectionCode: string, value: number) => {
-    const section = allSections.find(s => s.code === sectionCode || s.id === sectionCode);
-    const sectionTitle = lang === "th" ? section?.titleTh || sectionCode : section?.titleEn || sectionCode;
-    
-    const { QUESTION_BANK } = await import("@/lib/mock-data");
-    const masterSec = QUESTION_BANK.find(s => s.id === sectionCode);
-    const questions = masterSec ? masterSec.questions : [];
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-    setSelectedHeatmapCell({
-      dept,
-      sectionCode,
-      value,
-      sectionTitle,
-      questions: questions.map((q, idx) => ({
-        id: q.id,
-        textEn: q.textEn,
-        textTh: q.textTh,
-        score: Math.min(5, Math.max(1, value + (Math.sin(idx + 1) * 0.4)))
-      }))
-    });
+  // Derived option lists from demoOptions
+  const ageOptions = useMemo(() => demoOptions.filter(o => o.field_key === "ageRanges"), [demoOptions]);
+  const tenureOptions = useMemo(() => demoOptions.filter(o => o.field_key === "tenures"), [demoOptions]);
+  const genderOptions = useMemo(() => demoOptions.filter(o => o.field_key === "genders"), [demoOptions]);
+  const locationOptions = useMemo(() => demoOptions.filter(o => o.field_key === "locations"), [demoOptions]);
+
+  const resetFilters = () => {
+    setSelectedSurvey("all");
+    setSelectedDept("all");
+    setSelectedBU("all");
+    setSelectedAge("all");
+    setSelectedTenure("all");
+    setSelectedGender("all");
+    setSelectedLocation("all");
+    setStartDate("");
+    setEndDate("");
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-      <div className="w-8 h-8 rounded-full border-2 border-slate-100 border-t-primary animate-spin" />
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("dash.synthesizing")}</p>
-    </div>
-  );
+  const top3 = data?.sectionStats.slice(0, 3) ?? [];
+  const bottom3 = data?.sectionStats.length
+    ? data.sectionStats.slice(-Math.min(3, data.sectionStats.length)).reverse()
+    : [];
+
+  // Shared select style helper
+  const selectTriggerCls = "h-9 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-900";
+  const selectContentCls = "rounded-xl dark:bg-slate-900";
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500 pb-10">
-      
-      {/* ── Admin Header ── */}
-      <div className="flex items-start justify-between gap-6 pb-2">
-        <div className="space-y-1.5">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+
+      {/* ── Header ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 via-blue-500 to-amber-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Activity className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <BarChart3 className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{t("dash.adminTitle")}</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {lang === "th" ? "แดชบอร์ดผลวิเคราะห์ความผูกพัน" : "Engagement Analytics Dashboard"}
+            </h1>
           </div>
-          <p className="text-[15px] font-medium text-slate-400 ml-13">
-            {t("dash.adminSubtitle")}
+          <p className="text-sm font-medium text-slate-400 pl-[52px]">
+            {lang === "th"
+              ? "รายงานผลการวิเคราะห์ความผูกพันพนักงานเชิงลึก เพื่อการวางแผน HR เชิงยุทธศาสตร์"
+              : "Deep-dive employee engagement analysis for strategic HR workforce planning."}
           </p>
         </div>
-        <div className="flex items-center gap-4 p-4 px-6 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
-           {/* Engagement Score */}
-           <div className="flex-1 text-right">
-              <div className="inline-block min-w-[140px] text-right">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block whitespace-nowrap">
-                  {t("dash.engagementScore")}
-                </span>
-                <div className="text-2xl font-bold text-primary dark:text-white tabular-nums tracking-tight whitespace-nowrap">
-                  {overallStats.engagementScore}<span className="text-[11px] font-normal text-slate-400 ml-0.5">/5</span>
-                </div>
-              </div>
-           </div>
-           <Separator orientation="vertical" className="h-9" />
-
-           {/* Response Rate */}
-           <div className="flex-1 text-right">
-              <div className="inline-block min-w-[140px] text-right">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block whitespace-nowrap">
-                  {t("dash.responseRate")}
-                </span>
-                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight whitespace-nowrap">
-                  {overallStats.responseRate}%
-                </div>
-                <div className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">
-                  {overallStats.totalResponses} / {overallStats.totalTarget}
-                </div>
-              </div>
-           </div>
-           <Separator orientation="vertical" className="h-9" />
-           <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0">
-              <TrendingUp className="w-5 h-5" />
-           </div>
-        </div>
+        <Button variant="outline" size="sm" onClick={loadData} disabled={loading}
+          className="shrink-0 rounded-xl h-9 gap-2 text-xs font-bold border-slate-200 dark:border-slate-700">
+          <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+          {lang === "th" ? "รีเฟรช" : "Refresh"}
+        </Button>
       </div>
 
-      {/* ── Dynamic Layout Grid ── */}
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-6 p-4 px-6 bg-slate-50/40 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 rounded-xl shadow-sm justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-6 w-full">
-            {/* Campaign Selection */}
-            <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  <Layers className="w-4 h-4" />
-               </div>
-               <div className="min-w-[200px]">
-                   <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">{t("dash.filterCampaign")}</Label>
-                  <Select value={selectedSurvey} onValueChange={(val) => { setSelectedSurvey(val); loadData(val, selectedYear); }}>
-                      <SelectTrigger className="h-7 p-0 border-none bg-transparent shadow-none font-bold text-sm focus:ring-0 w-full text-left dark:text-white">
-                        <SelectValue placeholder={t("dash.allCampaigns")} />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl shadow-2xl p-1.5 border-slate-100 dark:border-slate-800 dark:bg-slate-900">
-                        <SelectItem value="all" className="h-9 rounded-lg text-xs font-semibold">{t("dash.allCampaigns")}</SelectItem>
-                       {surveys.map((s) => (
-                         <SelectItem key={s.id} value={s.id} className="h-9 rounded-lg text-xs font-semibold">
-                           {lang === "th" ? s.titleTh : s.titleEn}
-                         </SelectItem>
-                       ))}
-                     </SelectContent>
-                  </Select>
-               </div>
+      {/* ── Filter Bar ── */}
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl bg-white dark:bg-slate-900/60">
+        <CardHeader className="px-6 py-3.5 border-b dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-indigo-500" />
+              <span className="text-sm font-bold text-slate-700 dark:text-white">
+                {lang === "th" ? "ตัวกรองข้อมูล" : "Filters"}
+              </span>
+              {data && (
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                  {data.totalResponses} {lang === "th" ? "ผู้ตอบ" : "responses"}
+                </span>
+              )}
             </div>
-            <Separator orientation="vertical" className="hidden sm:block h-8 dark:bg-slate-800" />
-            {/* Year Selection (formerly Time Horizon) */}
-            <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  <Filter className="w-4 h-4" />
-               </div>
-               <div>
-                   <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">{t("dash.filterYear")}</Label>
-                  <div className="flex gap-1.5">
-                    {["2025", "2026", "all"].map((y) => (
-                      <Button 
-                        key={y} 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => { setSelectedYear(y); loadData(selectedSurvey, y); }}
-                        className={cn(
-                          "h-6 px-3 rounded-lg text-[10px] font-bold transition-all uppercase", 
-                          y === selectedYear ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400"
-                        )}
-                      >
-                        {y === "all" ? t("dash.allYears") : y}
-                      </Button>
-                    ))}
-                  </div>
-               </div>
+            <Button variant="ghost" size="sm" onClick={resetFilters}
+              className="h-7 text-[10px] font-bold text-slate-500 hover:text-rose-600 uppercase tracking-wider">
+              {lang === "th" ? "ล้างค่า" : "Reset All"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3">
+
+            {/* Survey */}
+            <div className="space-y-1 col-span-2 lg:col-span-2">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "แบบสำรวจ" : "Survey"}
+              </Label>
+              <Select value={selectedSurvey} onValueChange={setSelectedSurvey}>
+                <SelectTrigger className={selectTriggerCls}>
+                  <SelectValue placeholder={lang === "th" ? "ทั้งหมด" : "All"} />
+                </SelectTrigger>
+                <SelectContent className={selectContentCls}>
+                  <SelectItem value="all" className="text-xs">{lang === "th" ? "ทุกแคมเปญ" : "All Campaigns"}</SelectItem>
+                  {surveys.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">
+                      {lang === "th" ? s.titleTh : s.titleEn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Business Unit */}
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "หน่วยงาน" : "Business Unit"}
+              </Label>
+              <Select value={selectedBU} onValueChange={setSelectedBU}>
+                <SelectTrigger className={selectTriggerCls}>
+                  <SelectValue placeholder={lang === "th" ? "ทั้งหมด" : "All"} />
+                </SelectTrigger>
+                <SelectContent className={selectContentCls}>
+                  <SelectItem value="all" className="text-xs">{lang === "th" ? "ทั้งหมด" : "All"}</SelectItem>
+                  {businessUnits.filter(Boolean).map(bu => (
+                    <SelectItem key={bu} value={bu} className="text-xs">{bu}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Department */}
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "ฝ่าย" : "Department"}
+              </Label>
+              <Select value={selectedDept} onValueChange={setSelectedDept}>
+                <SelectTrigger className={selectTriggerCls}>
+                  <SelectValue placeholder={lang === "th" ? "ทั้งหมด" : "All"} />
+                </SelectTrigger>
+                <SelectContent className={selectContentCls}>
+                  <SelectItem value="all" className="text-xs">{lang === "th" ? "ทั้งหมด" : "All"}</SelectItem>
+                  {departments.map(d => (
+                    <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Age / Generation */}
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "ช่วงอายุ" : "Age Range"}
+              </Label>
+              <Select value={selectedAge} onValueChange={setSelectedAge}>
+                <SelectTrigger className={selectTriggerCls}>
+                  <SelectValue placeholder={lang === "th" ? "ทั้งหมด" : "All"} />
+                </SelectTrigger>
+                <SelectContent className={selectContentCls}>
+                  <SelectItem value="all" className="text-xs">{lang === "th" ? "ทั้งหมด" : "All"}</SelectItem>
+                  {ageOptions.map(o => (
+                    <SelectItem key={o.value} value={o.label_en} className="text-xs">
+                      {lang === "th" ? o.label_th : o.label_en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tenure */}
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "อายุงาน" : "Tenure"}
+              </Label>
+              <Select value={selectedTenure} onValueChange={setSelectedTenure}>
+                <SelectTrigger className={selectTriggerCls}>
+                  <SelectValue placeholder={lang === "th" ? "ทั้งหมด" : "All"} />
+                </SelectTrigger>
+                <SelectContent className={selectContentCls}>
+                  <SelectItem value="all" className="text-xs">{lang === "th" ? "ทั้งหมด" : "All"}</SelectItem>
+                  {tenureOptions.map(o => (
+                    <SelectItem key={o.value} value={o.label_en} className="text-xs">
+                      {lang === "th" ? o.label_th : o.label_en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Gender */}
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "เพศ" : "Gender"}
+              </Label>
+              <Select value={selectedGender} onValueChange={setSelectedGender}>
+                <SelectTrigger className={selectTriggerCls}>
+                  <SelectValue placeholder={lang === "th" ? "ทั้งหมด" : "All"} />
+                </SelectTrigger>
+                <SelectContent className={selectContentCls}>
+                  <SelectItem value="all" className="text-xs">{lang === "th" ? "ทั้งหมด" : "All"}</SelectItem>
+                  {genderOptions.map(o => (
+                    <SelectItem key={o.value} value={o.label_en} className="text-xs">
+                      {lang === "th" ? o.label_th : o.label_en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Location (Site) */}
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "สถานที่" : "Location"}
+              </Label>
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger className={selectTriggerCls}>
+                  <SelectValue placeholder={lang === "th" ? "ทั้งหมด" : "All"} />
+                </SelectTrigger>
+                <SelectContent className={selectContentCls}>
+                  <SelectItem value="all" className="text-xs">{lang === "th" ? "ทั้งหมด" : "All"}</SelectItem>
+                  {locationOptions.map(o => (
+                    <SelectItem key={o.value} value={o.label_en} className="text-xs">
+                      {lang === "th" ? o.label_th : o.label_en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+          </div>
+
+          {/* Date range row */}
+          <div className="grid grid-cols-2 gap-3 mt-3 max-w-xs">
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "ตั้งแต่วันที่" : "From Date"}
+              </Label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                {lang === "th" ? "ถึงวันที่" : "To Date"}
+              </Label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none" />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Loading Skeleton ── */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-slate-100 dark:border-slate-800 border-t-indigo-500 animate-spin" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            {lang === "th" ? "กำลังโหลดข้อมูล..." : "Loading analytics..."}
+          </p>
         </div>
-      </div>
+      )}
 
-      {/* ── Top Grid: Trend & Pie ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <Card className="lg:col-span-8 border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
-          <CardHeader className="px-8 py-6 bg-slate-50/40 dark:bg-slate-800/20 border-b dark:border-slate-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-               <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary shadow-sm">
-                  <BarChart3 className="w-4.5 h-4.5" />
-               </div>
-               <div>
-                   <CardTitle className="text-sm font-bold tracking-tight dark:text-white">{t("dash.momentum")}</CardTitle>
-                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("dash.momentumDesc")}</CardDescription>
-               </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" className="dark:opacity-10" />
-                <XAxis dataKey="period" stroke="#94a3b8" fontSize={10} fontWeight={700} tickLine={false} axisLine={false} />
-                <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={10} fontWeight={700} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-2xl backdrop-blur-md">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{payload[0].payload.period}</p>
-                           <p className="text-lg font-bold text-white">{payload[0].value} <span className="text-[10px] text-slate-400 font-normal">{t("dash.avgScore")}</span></p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" strokeLinecap="round" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {!loading && data && (
+        <>
+          {/* ── Row 1: KPI Cards ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-          <Card className="lg:col-span-4 border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
-          <CardHeader className="px-6 py-4 bg-slate-50/40 dark:bg-slate-800/20 border-b dark:border-slate-800">
-             <div className="flex items-center gap-4">
-               <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary shadow-sm">
-                  <Building2 className="w-4.5 h-4.5" />
-               </div>
-               <div>
-                   <CardTitle className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">{t("dash.responsesByDept")}</CardTitle>
-                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("dash.responsesByDeptDesc")}</CardDescription>
-               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            {engagementByDept.length > 0 ? (
-              <div className="flex flex-col">
-                <div className="relative h-[210px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={engagementByDept.map(d => ({ name: d.dept, value: d.responses }))}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={55}
-                        outerRadius={85}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {(() => {
-                          const PIE_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6','#6366f1'];
-                          return engagementByDept.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                          ));
-                        })()}
-                      </Pie>
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const d = payload[0].payload;
-                            const total = engagementByDept.reduce((a: number, b: any) => a + b.responses, 0);
-                            const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0';
-                            return (
-                              <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[140px]">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{d.name}</p>
-                                 <p className="text-lg font-black text-white">{d.value} <span className="text-[10px] text-slate-400 font-normal">{t("dash.respondents")}</span></p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <div className="flex-1 h-1.5 rounded-full bg-slate-700 overflow-hidden">
-                                    <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
-                                  </div>
-                                  <span className="text-[11px] font-bold text-white">{pct}%</span>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="text-center">
-                      <p className="text-2xl font-black text-slate-900 dark:text-white">{engagementByDept.reduce((a: number, b: any) => a + b.responses, 0)}</p>
-                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{t("dash.total")}</p>
-                    </div>
+            {/* 1: Overall Engagement */}
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60 flex flex-col">
+              <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+                      {lang === "th" ? "คะแนน Engagement ภาพรวม" : "Overall Engagement Score"}
+                    </CardTitle>
+                    <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      {lang === "th" ? "คะแนนเฉลี่ยทุกมิติ" : "Average across all dimensions"}
+                    </CardDescription>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-x-5 gap-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                  {(() => {
-                    const PIE_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6','#6366f1'];
-                    return engagementByDept.map((d: any, i: number) => (
-                      <div key={d.dept} className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">{d.dept}</span>
-                        <span className="text-[10px] font-bold text-slate-400">{d.responses}</span>
-                      </div>
-                    ));
-                  })()}
+              </CardHeader>
+              <CardContent className="p-6 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="text-5xl font-black tracking-tight" style={{ color: scoreColor(data.overallScore) }}>
+                    {data.overallScore > 0 ? data.overallScore.toFixed(2) : "—"}
+                    <span className="text-base font-semibold text-slate-400 ml-1">/5.00</span>
+                  </div>
+                  {data.totalResponses === 0 && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      {lang === "th" ? "ยังไม่มีข้อมูลผู้ตอบ" : "No responses yet"}
+                    </p>
+                  )}
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[210px] gap-2">
-                <Building2 className="w-8 h-8 text-slate-400" />
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("common.noResults")}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                {/* Sparkline */}
+                {data.trendData.length > 1 && (
+                  <div className="h-12 mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={data.trendData}>
+                        <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2} fill="#6366f1" fillOpacity={0.08} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                <div className="mt-3 pt-3 border-t dark:border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">
+                    {data.totalResponses} {lang === "th" ? "ผู้ตอบ" : "responses"}
+                  </span>
+                  <span className="font-bold" style={{ color: scoreColor(data.overallScore) }}>
+                    {data.overallScore >= 4 ? (lang === "th" ? "ดีเยี่ยม" : "Excellent")
+                      : data.overallScore >= 3 ? (lang === "th" ? "ดี" : "Good")
+                      : data.overallScore >= 2 ? (lang === "th" ? "พอใช้" : "Fair")
+                      : data.overallScore > 0 ? (lang === "th" ? "ต้องปรับปรุง" : "Needs Work")
+                      : (lang === "th" ? "ไม่มีข้อมูล" : "No Data")}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* ── Mid Grid: Heatmap ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <Card className="lg:col-span-12 border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
-          <CardHeader className="px-6 py-4 bg-slate-50/40 dark:bg-slate-800/20 border-b dark:border-slate-800 flex flex-row items-center justify-between">
-             <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-                  <Compass className="w-4.5 h-4.5" />
-               </div>
-               <div>
-                   <CardTitle className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">{t("dash.heatmapTitle")}</CardTitle>
-                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("dash.heatmapDesc")}</CardDescription>
-               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <div 
-                className="grid gap-2 px-2"
-                style={{ gridTemplateColumns: `150px repeat(${sectionCodes.length}, minmax(0, 1fr))` }}
-              >
-                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("dash.heatmapNode")}</div>
-                <TooltipProvider>
-                  {sectionCodes.map(code => {
-                    const section = allSections.find(s => s.id === code || s.code === code);
-                    const shortName = section
-                      ? (lang === 'th' ? section.titleTh : section.titleEn).length > 20
-                        ? (lang === 'th' ? section.titleTh : section.titleEn).slice(0, 18) + '…'
-                        : (lang === 'th' ? section.titleTh : section.titleEn)
-                      : code;
-                    return (
-                      <UITooltip key={code}>
-                        <TooltipTrigger asChild>
-                          <div className="text-center text-[10px] font-bold tracking-tight text-primary cursor-help hover:text-primary/70 transition-colors bg-primary/5 dark:bg-primary/10 rounded py-1 px-1 border border-primary/10 truncate" title={section ? (lang === 'th' ? section.titleTh : section.titleEn) : code}>
-                            {shortName}
+            {/* 2: Participation Rate */}
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60 flex flex-col">
+              <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+                      {lang === "th" ? "อัตราการเข้าร่วมตอบ" : "Participation Rate"}
+                    </CardTitle>
+                    <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      {lang === "th" ? "ผู้ส่งแบบสอบถาม / เป้าหมาย" : "Submissions vs. target"}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 flex-1 flex items-center gap-6">
+                {/* Radial gauge */}
+                <div className="relative w-20 h-20 shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="7" />
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="#10b981" strokeWidth="7" strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 26}
+                      strokeDashoffset={2 * Math.PI * 26 * (1 - data.participationRate / 100)}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[13px] font-black text-emerald-600 dark:text-emerald-400">{data.participationRate}%</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{data.participationRate}%</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <span className="font-bold text-slate-700 dark:text-slate-200">{data.totalResponses}</span>
+                    {lang === "th" ? " จาก " : " of "}
+                    <span className="font-bold text-slate-700 dark:text-slate-200">{data.totalTarget || "—"}</span>
+                    {lang === "th" ? " คน" : " target"}
+                  </div>
+                  {data.totalTarget === 0 && (
+                    <p className="text-[10px] text-amber-500 font-semibold mt-1">
+                      {lang === "th" ? "ไม่ได้ตั้งเป้าหมาย" : "No target set"}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3: Best & Worst at a glance */}
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60 flex flex-col">
+              <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                    <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+                      {lang === "th" ? "มิติดีที่สุด / แย่ที่สุด" : "Best & Worst Dimension"}
+                    </CardTitle>
+                    <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      {lang === "th" ? "คะแนนสูงสุดและต่ำสุดในรอบนี้" : "Highest & lowest scoring areas"}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 flex-1 flex flex-col justify-center gap-3">
+                {data.sectionStats.length === 0 ? (
+                  <p className="text-center text-xs text-slate-400">
+                    {lang === "th" ? "ไม่มีข้อมูลมิติ" : "No dimension data"}
+                  </p>
+                ) : (
+                  <>
+                    {/* Best */}
+                    {data.sectionStats[0] && (
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-0.5">
+                            <ArrowUpRight className="w-3 h-3" />
+                            {lang === "th" ? "ดีที่สุด" : "Best"}
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-slate-900 text-white border-slate-800 p-3 rounded-xl shadow-2xl max-w-[200px] animate-in fade-in zoom-in duration-200">
-                          <div className="space-y-1">
-                            <div className="text-[10px] font-bold text-primary uppercase tracking-tighter">Section {code}</div>
-                            <div className="text-sm font-bold leading-snug">{lang === 'th' ? section?.titleTh : section?.titleEn}</div>
-                            {(section?.descTh || section?.descEn) && (
-                              <div className="text-[10px] text-slate-400 leading-tight pt-1 border-t border-white/10 mt-1">
-                                {lang === 'th' ? section?.descTh : section?.descEn}
-                              </div>
-                            )}
+                          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[160px]">
+                            {lang === "th" ? data.sectionStats[0].titleTh : data.sectionStats[0].titleEn}
                           </div>
-                        </TooltipContent>
-                      </UITooltip>
-                    );
-                  })}
-                </TooltipProvider>
-              </div>
-              <ScrollArea className="h-[220px] pr-4">
-                 <div className="space-y-2">
-                  {heatmapData.map((row) => (
-                    <div 
-                      key={row.dept} 
-                      className="grid gap-2 items-center group"
-                      style={{ gridTemplateColumns: `150px repeat(${sectionCodes.length}, minmax(0, 1fr))` }}
-                    >
-                      <div className="text-[12px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-primary truncate transition-colors">{row.dept}</div>
-                      {sectionCodes.map((k) => {
-                        const v = row[k] || 0;
-                        // Best Practice: RAG Scoring (Red < 2.5, Amber < 3.5, Green >= 3.5)
-                        let bgColor = "bg-emerald-50 text-emerald-700 border-emerald-100/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
-                        if (v < 2.5) {
-                          bgColor = "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
-                        } else if (v < 3.5) {
-                          bgColor = "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
-                        }
-                        
-                        return (
-                          <div
-                            key={k}
-                            onClick={() => v > 0 && handleHeatmapCellClick(row.dept, k, v)}
-                            className={cn(
-                              "h-10 rounded-xl flex items-center justify-center text-[11px] font-bold shadow-sm transition-all hover:scale-105 border",
-                              v > 0 && "cursor-pointer hover:ring-2 hover:ring-primary/40 hover:ring-offset-1 dark:hover:ring-offset-slate-900",
-                              bgColor
-                            )}
-                          >
-                            {v > 0 ? v.toFixed(1) : "-"}
+                        </div>
+                        <div className="text-right ml-3 shrink-0">
+                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                            {data.sectionStats[0].score.toFixed(2)}
+                          </span>
+                          <span className="text-[9px] text-slate-400 ml-0.5">/5</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Worst */}
+                    {data.sectionStats[data.sectionStats.length - 1] && data.sectionStats.length > 1 && (
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1 text-[9px] font-black text-rose-600 uppercase tracking-widest mb-0.5">
+                            <ArrowDownRight className="w-3 h-3" />
+                            {lang === "th" ? "ต้องปรับปรุง" : "Worst"}
                           </div>
-                        );
-                      })}
+                          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[160px]">
+                            {lang === "th"
+                              ? data.sectionStats[data.sectionStats.length - 1].titleTh
+                              : data.sectionStats[data.sectionStats.length - 1].titleEn}
+                          </div>
+                        </div>
+                        <div className="text-right ml-3 shrink-0">
+                          <span className="text-base font-black text-rose-600 dark:text-rose-400">
+                            {data.sectionStats[data.sectionStats.length - 1].score.toFixed(2)}
+                          </span>
+                          <span className="text-[9px] text-slate-400 ml-0.5">/5</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── Row 2: Top 3 & Bottom 3 ── */}
+          <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
+            <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+              <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
+                {lang === "th" ? "อันดับมิติ: ดีที่สุด 3 อันดับ vs แย่ที่สุด 3 อันดับ" : "Dimension Rankings: Top 3 vs Bottom 3"}
+              </CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {lang === "th"
+                  ? "เปรียบเทียบมิติที่มีผลลัพธ์สูงสุดและต่ำสุดเพื่อกำหนดแผนพัฒนาองค์กร"
+                  : "Compare highest and lowest performing engagement dimensions for strategic action planning"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              {data.sectionStats.length === 0 ? (
+                <div className="text-center py-12 text-sm text-slate-400">
+                  {lang === "th" ? "ไม่มีข้อมูลมิติ — กรุณาตรวจสอบว่ามีคำตอบในฐานข้อมูล" : "No dimension data — ensure responses have been submitted with numeric answers."}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Top 3 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-widest pb-2 border-b dark:border-slate-800">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {lang === "th" ? "มิติที่มีคะแนนสูงสุด 3 อันดับ" : "Top 3 Highest Scoring"}
                     </div>
-                  ))}
-                 </div>
-              </ScrollArea>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Live Feed ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <Card className="lg:col-span-12 border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
-          <CardHeader className="px-6 py-4 bg-slate-50/40 dark:bg-slate-800/20 border-b dark:border-slate-800 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-4">
-               <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-rose-600 dark:text-rose-400 shadow-sm">
-                  <Heart className="w-4.5 h-4.5 animate-pulse" />
-               </div>
-               <div>
-                   <CardTitle className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">{t("dash.liveFeed")}</CardTitle>
-                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("dash.liveFeedDesc")}</CardDescription>
-               </div>
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-full">
-               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">{t("dash.live")}</span>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-             <ScrollArea className="h-[310px]">
-                <div className="divide-y divide-slate-50 dark:divide-slate-800">
-                   {recentSubmissions.length > 0 ? recentSubmissions.map((item) => (
-                      <div key={item.id} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
-                         <div className="flex items-start justify-between gap-3 mb-1">
-                            <div className="flex items-center gap-2">
-                               {item.type === 'anonymous' ? (
-                                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400" title={lang === "th" ? "ไม่ระบุตัวตน" : "Anonymous"}>
-                                     <UserCheck className="w-3.5 h-3.5" />
-                                  </div>
-                               ) : (
-                                  <div className="w-7 h-7 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary dark:text-primary" title="Identified">
-                                     <Fingerprint className="w-3.5 h-3.5" />
-                                  </div>
-                               )}
-                               <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors uppercase tracking-tight">
-                                  {item.department}
-                               </div>
-                            </div>
-                            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 tabular-nums">
-                               {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                         </div>
-                         <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium line-clamp-1 ml-9">
-                            {item.surveyTitle}
-                         </div>
-                      </div>
-                   )) : (
-                      <div className="p-10 text-center space-y-2">
-                         <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-300 dark:text-slate-600">
-                            <ZapOff className="w-5 h-5" />
-                         </div>
-                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t("dash.waitingInput")}</p>
-                      </div>
-                   )}
-                </div>
-             </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <Card className="lg:col-span-4 border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
-          <CardHeader className="px-6 py-4 bg-slate-50/40 dark:bg-slate-800/20 border-b dark:border-slate-800">
-            <div className="flex items-center gap-4">
-               <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-                  <Brain className="w-4.5 h-4.5" />
-               </div>
-               <div>
-                   <CardTitle className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">{t("dash.radarTitle")}</CardTitle>
-                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("dash.radarDesc")}</CardDescription>
-               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="relative p-4 h-[300px] flex items-center justify-center">
-            {/* Risk Legend */}
-            {riskCats.length > 0 && (
-              <div className="absolute top-3 right-6 flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-full z-10">
-                <AlertTriangle className="w-3 h-3 text-rose-500" />
-                <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase">{t("dash.riskDetected")}</span>
-              </div>
-            )}
-            <ResponsiveContainer width="100%" height="100%">
-               {riskCats.length > 0 ? (
-               <RadarChart data={riskCats} cx="50%" cy="50%" outerRadius="70%">
-                <PolarGrid stroke="#cbd5e1" strokeWidth={1} className="dark:opacity-10" />
-                <PolarAngleAxis 
-                  dataKey="category" 
-                  tick={({ x, y, payload, cx, cy }: any) => {
-                    const cat = riskCats.find((c: any) => c.category === payload.value);
-                    const isRisk = cat && cat.score < 3.0;
-
-                    const dx = x - cx;
-                    const dy = y - cy;
-                    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-                    
-                    // Push labels outwards by 14px
-                    const pushX = x + (dx / distance) * 14;
-                    const pushY = y + (dy / distance) * 10;
-
-                    // Determine text anchor dynamically based on angle/horizontal side
-                    let textAnchor: "start" | "end" | "middle" = "middle";
-                    if (dx > 10) {
-                      textAnchor = "start";
-                    } else if (dx < -10) {
-                      textAnchor = "end";
-                    }
-
-                    return (
-                      <text 
-                        x={pushX} 
-                        y={pushY} 
-                        textAnchor={textAnchor} 
-                        fontSize={9} 
-                        fontWeight={700} 
-                        fill={isRisk ? '#ef4444' : '#64748b'}
-                        dy={4}
-                      >
-                        {payload.value}{isRisk ? ' ⚠' : ''}
-                      </text>
-                    );
-                  }}
-                />
-                <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-                <Radar 
-                  name="Score" 
-                  dataKey="score" 
-                  stroke="#6366f1" 
-                  strokeWidth={3} 
-                  fill="#6366f1" 
-                  fillOpacity={0.25} 
-                />
-                {/* Risk threshold reference */}
-                <Radar
-                  name="Risk Threshold"
-                  dataKey={() => 3.0}
-                  stroke="#f43f5e"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  fill="none"
-                  dot={false}
-                  legendType="none"
-                />
-                <Tooltip 
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const d = payload[0].payload;
-                      const isRisk = d.score < 3.0;
-                      return (
-                        <div className={cn(
-                          "p-3 rounded-xl shadow-2xl backdrop-blur-sm min-w-[140px] border",
-                          isRisk 
-                            ? "bg-rose-50 dark:bg-rose-950/90 border-rose-200 dark:border-rose-800" 
-                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                        )}>
-                          <div className="flex items-center gap-2 mb-1">
-                            {isRisk && <AlertTriangle className="w-3 h-3 text-rose-500" />}
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{d.category}</p>
-                          </div>
-                          <p className={cn("text-lg font-black", isRisk ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white")}>
-                            {d.score.toFixed(2)} <span className="text-[10px] font-normal text-slate-400">/ 5.00</span>
+                    {top3.length === 0 ? (
+                      <p className="text-xs text-slate-400">{lang === "th" ? "ไม่มีข้อมูล" : "No data"}</p>
+                    ) : top3.map((item, idx) => (
+                      <div key={item.sectionId} className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-black text-xs shrink-0">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                            {lang === "th" ? item.titleTh : item.titleEn}
                           </p>
-                          {isRisk && <p className="text-[10px] font-bold text-rose-500 mt-0.5">{t("dash.belowThreshold")}</p>}
+                          <p className="text-[9px] text-slate-400 mt-0.5">{item.count} {lang === "th" ? "คำตอบ" : "answers"}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{item.score.toFixed(2)}</span>
+                          <span className="text-[9px] text-slate-400 ml-0.5">/5</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bottom 3 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-rose-600 uppercase tracking-widest pb-2 border-b dark:border-slate-800">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {lang === "th" ? "มิติที่ต้องปรับปรุง 3 อันดับ" : "Bottom 3 (Needs Improvement)"}
+                    </div>
+                    {bottom3.length === 0 ? (
+                      <p className="text-xs text-slate-400">{lang === "th" ? "ไม่มีข้อมูล" : "No data"}</p>
+                    ) : bottom3.map((item, idx) => (
+                      <div key={item.sectionId} className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-400 flex items-center justify-center font-black text-xs shrink-0">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                            {lang === "th" ? item.titleTh : item.titleEn}
+                          </p>
+                          <p className="text-[9px] text-slate-400 mt-0.5">{item.count} {lang === "th" ? "คำตอบ" : "answers"}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="text-sm font-black text-rose-600 dark:text-rose-400">{item.score.toFixed(2)}</span>
+                          <span className="text-[9px] text-slate-400 ml-0.5">/5</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── Row 3: All Dimensions Bar Chart ── */}
+          {data.sectionStats.length > 0 && (
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
+              <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
+                  {lang === "th" ? "คะแนนรายมิติทั้งหมด" : "All Dimension Scores"}
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {lang === "th" ? "ภาพรวมคะแนนเฉลี่ยแยกตามมิติการสำรวจทั้งหมด" : "Complete breakdown of average scores per survey dimension"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6" style={{ height: Math.max(280, data.sectionStats.length * 52 + 60) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={data.sectionStats}
+                    layout="vertical"
+                    margin={{ top: 4, right: 60, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#e2e8f0" className="dark:opacity-10" />
+                    <XAxis type="number" domain={[0, 5]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} ticks={[1,2,3,4,5]} />
+                    <YAxis type="category" dataKey={lang === "th" ? "titleTh" : "titleEn"} stroke="#94a3b8" fontSize={9} fontWeight={600} tickLine={false} axisLine={false} width={160} />
+                    <Tooltip content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload as SectionStat;
+                      return (
+                        <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-2xl text-white text-xs max-w-[240px]">
+                          <p className="font-bold mb-1 leading-snug">{lang === "th" ? d.titleTh : d.titleEn}</p>
+                          <p className="font-black" style={{ color: scoreColor(d.score) }}>{d.score.toFixed(2)} / 5.00</p>
+                          <p className="text-slate-400 mt-0.5">{d.count} {lang === "th" ? "คำตอบ" : "answers"}</p>
                         </div>
                       );
-                    }
-                    return null;
-                  }}
-                />
-              </RadarChart>
-               ) : <div className="flex items-center justify-center h-full text-xs text-slate-400">{t("dash.noRisks")}</div> }
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+                    }} />
+                    <Bar dataKey="score" radius={[0, 6, 6, 0]} maxBarSize={24} label={{ position: "right", fontSize: 10, fontWeight: 700, fill: "#64748b", formatter: (v: number) => v.toFixed(2) }}>
+                      {data.sectionStats.map((entry, i) => (
+                        <Cell key={i} fill={scoreColor(entry.score)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
-        <Card className="lg:col-span-8 border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
-          <CardHeader className="px-6 py-4 bg-slate-50/40 dark:bg-slate-800/20 border-b dark:border-slate-800 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-4">
-               <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary shadow-sm">
-                  <Users className="w-4.5 h-4.5" />
-               </div>
-               <div>
-                   <CardTitle className="text-sm font-bold tracking-tight dark:text-white">{t("dash.registryTitle")}</CardTitle>
-                   <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("dash.registryDesc")}</CardDescription>
-               </div>
+          {/* ── Row 4: Demographic Charts (Age & Level) ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+            {/* Engagement by Age / Generation */}
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
+              <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+                      {lang === "th" ? "คะแนน Engagement ตามกลุ่มอายุ / Generation" : "Engagement Score by Age / Generation"}
+                    </CardTitle>
+                    <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      {lang === "th" ? "เปรียบเทียบระหว่างกลุ่มคน Gen Z / Y / X / BB" : "Cross-generational sentiment comparison"}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 h-[280px]">
+                {data.ageStats.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                    {lang === "th" ? "ไม่มีข้อมูลกลุ่มอายุ" : "No age range data"}
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.ageStats} margin={{ top: 16, right: 10, left: -20, bottom: 24 }}>
+                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" className="dark:opacity-10" />
+                      <XAxis dataKey="label" stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false}
+                        angle={-20} textAnchor="end" interval={0} />
+                      <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={10} fontWeight={700} tickLine={false} axisLine={false} ticks={[1,2,3,4,5]} />
+                      <Tooltip content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload as DemographicStat;
+                        return (
+                          <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-2xl text-white text-xs">
+                            <p className="font-bold mb-1">{d.label}</p>
+                            <p className="text-indigo-400 font-black">{d.score.toFixed(2)} / 5.00</p>
+                            <p className="text-slate-400 mt-0.5">{d.count} {lang === "th" ? "ผู้ตอบ" : "respondents"}</p>
+                          </div>
+                        );
+                      }} />
+                      <Bar dataKey="score" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                        {data.ageStats.map((entry, i) => (
+                          <Cell key={i} fill={scoreColor(entry.score)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Engagement by Job Level */}
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
+              <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                <div className="flex items-center gap-2.5">
+                  <Compass className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+                      {lang === "th" ? "คะแนน Engagement ตามระดับตำแหน่ง" : "Engagement Score by Job Level"}
+                    </CardTitle>
+                    <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      {lang === "th" ? "จาก Worker ถึง Director — วิเคราะห์ตามลำดับชั้น" : "From Worker to Director — hierarchical sentiment analysis"}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 h-[280px]">
+                {data.levelStats.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                    {lang === "th" ? "ไม่มีข้อมูลระดับตำแหน่ง" : "No job level data"}
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.levelStats} margin={{ top: 16, right: 10, left: -20, bottom: 24 }}>
+                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" className="dark:opacity-10" />
+                      <XAxis dataKey="label" stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false}
+                        angle={-20} textAnchor="end" interval={0} />
+                      <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={10} fontWeight={700} tickLine={false} axisLine={false} ticks={[1,2,3,4,5]} />
+                      <Tooltip content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload as DemographicStat;
+                        return (
+                          <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-2xl text-white text-xs">
+                            <p className="font-bold mb-1">{d.label}</p>
+                            <p className="text-emerald-400 font-black">{d.score.toFixed(2)} / 5.00</p>
+                            <p className="text-slate-400 mt-0.5">{d.count} {lang === "th" ? "ผู้ตอบ" : "respondents"}</p>
+                          </div>
+                        );
+                      }} />
+                      <Bar dataKey="score" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                        {data.levelStats.map((entry, i) => (
+                          <Cell key={i} fill={scoreColor(entry.score)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── Row 5: Satisfaction Detail by Age Group & Level ── */}
+          {(data.ageSectionRadar.length > 0 || data.levelSectionRadar.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+              {/* ── Detail: Satisfaction by Dimension per Age Group ── */}
+              <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
+                <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="w-4 h-4 text-violet-500" />
+                    <div>
+                      <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+                        {lang === "th"
+                          ? "มิติที่พนักงานพึงพอใจ แยกตามกลุ่มอายุ"
+                          : "Satisfaction by Dimension — per Age Group"}
+                      </CardTitle>
+                      <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        {lang === "th"
+                          ? "รายละเอียดด้านที่แต่ละ Generation พึงพอใจสูงสุด"
+                          : "Which dimensions each generation values most"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                  {data.ageSectionRadar.length === 0 || data.ageSectionGroups.length === 0 ? (
+                    <div className="h-[300px] flex items-center justify-center text-sm text-slate-400">
+                      {lang === "th" ? "ไม่มีข้อมูลรายละเอียด" : "No detail data available"}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Grouped Bar: dimension × age group */}
+                      <div style={{ height: Math.max(300, data.ageSectionRadar.length * 44 + 60) }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={data.ageSectionRadar}
+                            layout="vertical"
+                            margin={{ top: 4, right: 12, left: 8, bottom: 4 }}
+                          >
+                            <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#e2e8f0" className="dark:opacity-10" />
+                            <XAxis type="number" domain={[0, 5]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} ticks={[1,2,3,4,5]} />
+                            <YAxis
+                              type="category"
+                              dataKey={lang === "th" ? "dimensionTh" : "dimension"}
+                              stroke="#94a3b8" fontSize={8} fontWeight={600} tickLine={false} axisLine={false} width={140}
+                            />
+                            <Tooltip
+                              contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12, fontSize: 11, color: "#fff" }}
+                              formatter={(value: number, name: string) => [value.toFixed(2) + " / 5", name]}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700, paddingTop: 8 }} />
+                            {data.ageSectionGroups.map((grp, i) => {
+                              const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", "#06b6d4"];
+                              return (
+                                <Bar key={grp} dataKey={grp} name={grp} fill={COLORS[i % COLORS.length]} radius={[0, 4, 4, 0]} maxBarSize={12} />
+                              );
+                            })}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* Radar chart overlay */}
+                      <div className="mt-4 pt-4 border-t dark:border-slate-800">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                          {lang === "th" ? "มุมมอง Radar — ภาพรวมทุกมิติ" : "Radar View — All Dimensions"}
+                        </p>
+                        <div className="h-[280px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={data.ageSectionRadar}>
+                              <PolarGrid stroke="#e2e8f0" className="dark:opacity-10" />
+                              <PolarAngleAxis
+                                dataKey={lang === "th" ? "dimensionTh" : "dimension"}
+                                tick={{ fontSize: 8, fontWeight: 700, fill: "#64748b" }}
+                              />
+                              {data.ageSectionGroups.map((grp, i) => {
+                                const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", "#06b6d4"];
+                                return (
+                                  <Radar key={grp} name={grp} dataKey={grp}
+                                    stroke={COLORS[i % COLORS.length]} fill={COLORS[i % COLORS.length]} fillOpacity={0.12}
+                                    strokeWidth={2} dot={{ r: 3, fill: COLORS[i % COLORS.length] }}
+                                  />
+                                );
+                              })}
+                              <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700 }} />
+                              <Tooltip
+                                contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12, fontSize: 11, color: "#fff" }}
+                                formatter={(value: number, name: string) => [value.toFixed(2) + " / 5", name]}
+                              />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* ── Detail: Satisfaction by Dimension per Job Level ── */}
+              <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
+                <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                  <div className="flex items-center gap-2.5">
+                    <Compass className="w-4 h-4 text-violet-500" />
+                    <div>
+                      <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+                        {lang === "th"
+                          ? "มิติที่พนักงานพึงพอใจ แยกตามระดับตำแหน่ง"
+                          : "Satisfaction by Dimension — per Job Level"}
+                      </CardTitle>
+                      <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        {lang === "th"
+                          ? "รายละเอียดด้านที่แต่ละระดับตำแหน่งพึงพอใจสูงสุด"
+                          : "Which dimensions each job level values most"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                  {data.levelSectionRadar.length === 0 || data.levelSectionGroups.length === 0 ? (
+                    <div className="h-[300px] flex items-center justify-center text-sm text-slate-400">
+                      {lang === "th" ? "ไม่มีข้อมูลรายละเอียด" : "No detail data available"}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Grouped Bar: dimension × level */}
+                      <div style={{ height: Math.max(300, data.levelSectionRadar.length * 44 + 60) }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={data.levelSectionRadar}
+                            layout="vertical"
+                            margin={{ top: 4, right: 12, left: 8, bottom: 4 }}
+                          >
+                            <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#e2e8f0" className="dark:opacity-10" />
+                            <XAxis type="number" domain={[0, 5]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} ticks={[1,2,3,4,5]} />
+                            <YAxis
+                              type="category"
+                              dataKey={lang === "th" ? "dimensionTh" : "dimension"}
+                              stroke="#94a3b8" fontSize={8} fontWeight={600} tickLine={false} axisLine={false} width={140}
+                            />
+                            <Tooltip
+                              contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12, fontSize: 11, color: "#fff" }}
+                              formatter={(value: number, name: string) => [value.toFixed(2) + " / 5", name]}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700, paddingTop: 8 }} />
+                            {data.levelSectionGroups.map((grp, i) => {
+                              const COLORS = ["#10b981", "#6366f1", "#f59e0b", "#f43f5e", "#8b5cf6", "#06b6d4"];
+                              return (
+                                <Bar key={grp} dataKey={grp} name={grp} fill={COLORS[i % COLORS.length]} radius={[0, 4, 4, 0]} maxBarSize={12} />
+                              );
+                            })}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* Radar chart overlay */}
+                      <div className="mt-4 pt-4 border-t dark:border-slate-800">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                          {lang === "th" ? "มุมมอง Radar — ภาพรวมทุกมิติ" : "Radar View — All Dimensions"}
+                        </p>
+                        <div className="h-[280px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={data.levelSectionRadar}>
+                              <PolarGrid stroke="#e2e8f0" className="dark:opacity-10" />
+                              <PolarAngleAxis
+                                dataKey={lang === "th" ? "dimensionTh" : "dimension"}
+                                tick={{ fontSize: 8, fontWeight: 700, fill: "#64748b" }}
+                              />
+                              {data.levelSectionGroups.map((grp, i) => {
+                                const COLORS = ["#10b981", "#6366f1", "#f59e0b", "#f43f5e", "#8b5cf6", "#06b6d4"];
+                                return (
+                                  <Radar key={grp} name={grp} dataKey={grp}
+                                    stroke={COLORS[i % COLORS.length]} fill={COLORS[i % COLORS.length]} fillOpacity={0.12}
+                                    strokeWidth={2} dot={{ r: 3, fill: COLORS[i % COLORS.length] }}
+                                  />
+                                );
+                              })}
+                              <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700 }} />
+                              <Tooltip
+                                contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12, fontSize: 11, color: "#fff" }}
+                                formatter={(value: number, name: string) => [value.toFixed(2) + " / 5", name]}
+                              />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
             </div>
-            <div className="flex items-center gap-4">
-               <div className="text-right">
-                   <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                     {t("dash.overallResponseRate")}
-                   </span>
-                  <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{overallStats.responseRate}%</div>
-               </div>
-               <Separator orientation="vertical" className="h-6 dark:bg-slate-800" />
-               <Globe className="w-4 h-4 text-primary opacity-50" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-              <ScrollArea className="h-[300px]">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50/50 dark:bg-slate-800/40 sticky top-0 z-10 border-b dark:border-slate-800">
-                    <tr className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/60 tracking-wider">
-                      <th className="px-6 py-3.5">{t("dash.tableDept")}</th>
-                      <th className="px-6 py-3.5">{t("dash.tableFidelity")}</th>
-                      <th className="px-6 py-3.5 text-right">{t("dash.tableMetric")}</th>
-                    </tr>
-                  </thead>
-                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                   {engagementByDept.map((d, i) => {
-                     const target = Math.round(d.responses * 1.3);
-                     const pct = Math.round((d.responses / target) * 100);
-                     return (
-                        <tr key={d.dept} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-6 py-3.5">
-                            <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold border border-slate-100 dark:border-slate-700 shrink-0" style={{ backgroundColor: `${PIE_COLORS[i % PIE_COLORS.length]}10`, color: PIE_COLORS[i % PIE_COLORS.length] }}>
-                                  {d.dept.slice(0, 2).toUpperCase()}
-                               </div>
-                               <span className="text-[13px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors truncate max-w-[150px]">{d.dept}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-3.5">
-                            <div className="flex items-center gap-3">
-                               <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full rounded-full transition-all duration-1000" 
-                                    style={{ width: `${pct}%`, backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} 
-                                   />
-                               </div>
-                               <span className="text-[11px] font-bold text-slate-500 tabular-nums w-8 text-right">{pct}%</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-3.5 text-right">
-                             <div className="text-[12px] font-bold text-slate-900 dark:text-white">{d.responses} / {target}</div>
-                          </td>
-                        </tr>
-                     );
-                   })}
-                 </tbody>
-               </table>
-             </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-      
+          )}
+        </>
+      )}
 
-
-      {/* ── System Footer ── */}
+      {/* ── Footer ── */}
       <div className="flex items-center justify-between py-4 border-t border-slate-100 dark:border-slate-800 opacity-40">
         <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
           <Terminal className="w-3 h-3" />
-          {t("dash.protocol")}
+          HR Pulse Analytics Protocol v2.0
         </div>
         <div className="flex items-center gap-4">
-          {[
-            { icon: Database, text: t("dash.badgePrimary") },
-            { icon: Shield, text: t("dash.badgeSOC3") },
-          ].map(item => (
-            <div key={item.text} className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+          {[{ icon: Database, text: "Supabase Primary" }, { icon: Shield, text: "SOC3 Compliant" }].map(item => (
+            <div key={item.text} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-500">
               <item.icon className="w-3 h-3" />
               {item.text}
             </div>
           ))}
         </div>
       </div>
-
-      {/* ── Heatmap Cell Detail Dialog ── */}
-      <Dialog open={!!selectedHeatmapCell} onOpenChange={(open) => !open && setSelectedHeatmapCell(null)}>
-        <DialogContent className="sm:max-w-lg rounded-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-2xl">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border",
-                selectedHeatmapCell && selectedHeatmapCell.value >= 3.5 
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
-                  : selectedHeatmapCell && selectedHeatmapCell.value >= 2.5
-                    ? "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
-                    : "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
-              )}>
-                {selectedHeatmapCell?.value.toFixed(1)}
-              </div>
-              <div>
-                <DialogTitle className="text-base font-bold dark:text-white">
-                  {selectedHeatmapCell?.dept} — {selectedHeatmapCell?.sectionTitle}
-                </DialogTitle>
-                <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  {t("dash.sectionBreakdown")} {selectedHeatmapCell?.sectionCode}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-            {selectedHeatmapCell?.questions.map((q: any, idx: number) => {
-              const score = Number(q.score.toFixed(2));
-              const pct = (score / 5) * 100;
-              let barColor = 'bg-emerald-500';
-              if (score < 2.5) barColor = 'bg-rose-500';
-              else if (score < 3.5) barColor = 'bg-amber-500';
-              return (
-                <div key={q.id || idx} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300 leading-snug flex-1">
-                      {lang === 'th' ? q.textTh : q.textEn}
-                    </p>
-                    <span className={cn(
-                      "text-[11px] font-bold tabular-nums px-2 py-0.5 rounded-lg shrink-0",
-                      score >= 3.5 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" :
-                      score >= 2.5 ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400" :
-                      "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
-                    )}>{score}/5</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className={cn("h-full rounded-full transition-all duration-700", barColor)} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
+// ── Route Component ────────────────────────────────────────────────────────
 function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Employees should not see the analytics dashboard — redirect to Home
   useEffect(() => {
     if (user?.role === "employee") {
       navigate({ to: "/home", replace: true });

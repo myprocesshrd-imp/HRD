@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { getSurveys, getQuestionBank, createSurvey, updateSurvey, deleteSurvey, cloneSurvey, getDemographicsConstants } from "@/services/api";
+import { SurveyAuditLogDialog } from "@/components/admin/survey-audit-log-dialog";
 import type { MockSurvey } from "@/services/api";
 import type { SurveySection } from "@/services/api";
 import { getSssMappings } from "@/services/api/sss";
@@ -26,7 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Plus, Pencil, Trash2, Eye, 
   Copy, ClipboardList, Send, Search, Settings2, ShieldCheck, Terminal, Users, Zap, Edit3, Binary, Layers, Info, CheckCircle2,
-  Globe, Activity, Filter, Database, Clock, Target, ArrowRight, ChevronDown, ChevronRight, UserPlus
+  Globe, Activity, Filter, Database, Clock, Target, ArrowRight, ChevronDown, ChevronRight, UserPlus, History
 } from "lucide-react";
 import { PreviewSurveyDialog } from "@/components/admin/preview-survey-dialog";
 import { toast } from "sonner";
@@ -106,6 +107,7 @@ function SurveysAdmin() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [previewTarget, setPreviewTarget] = useState<MockSurvey | null>(null);
   const [sectionModalSurvey, setSectionModalSurvey] = useState<MockSurvey | null>(null);
+  const [auditLogSurvey, setAuditLogSurvey] = useState<MockSurvey | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedDemo, setExpandedDemo] = useState<Record<string, boolean>>({});
   const [demoConstants, setDemoConstants] = useState<Record<string, string[]>>({});
@@ -144,14 +146,7 @@ function SurveysAdmin() {
     return map;
   }, [departmentsWithBu]);
 
-  const canManageSurvey = (s: MockSurvey) => {
-    if (!user) return false;
-    if (s.creatorEmployeeCode) {
-      return user.employeeCode === s.creatorEmployeeCode;
-    }
-    // Seeded/system surveys: only super_admin can manage
-    return user.role === "super_admin";
-  };
+  const isAdmin = user?.role === "super_admin" || user?.role === "hr_admin";
 
   useEffect(() => {
     Promise.all([
@@ -371,10 +366,18 @@ function SurveysAdmin() {
                    ? `${t("surveys.createdBy")}: ${s.creatorNameTh || t("surveys.system")}`
                    : `${t("surveys.createdBy")}: ${s.creatorNameEn || t("surveys.system")}`}
                </span>
+               {(s.editorNameEn || s.editorNameTh) && (
+                 <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
+                   <Edit3 className="w-3.5 h-3.5" />
+                   {lang === "th"
+                     ? `${t("surveys.updatedBy")}: ${s.editorNameTh || s.editorNameEn || t("surveys.auditUnknown")}`
+                     : `${t("surveys.updatedBy")}: ${s.editorNameEn || s.editorNameTh || t("surveys.auditUnknown")}`}
+                 </span>
+               )}
                {s.updatedAt && s.updatedAt !== "—" && (
                  <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
                    <Clock className="w-3.5 h-3.5 text-slate-450" />
-                   {lang === "th" ? "แก้ไขล่าสุด:" : "Updated:"} {(() => {
+                   {(() => {
                      try {
                        return new Date(s.updatedAt).toLocaleString(lang === "th" ? "th-TH" : "en-GB", {
                          day: "2-digit", month: "short", year: "numeric",
@@ -405,10 +408,9 @@ function SurveysAdmin() {
       sortable: true,
       className: "w-[120px]",
       render: (s) => {
-        const editable = canManageSurvey(s);
         return (
           <Select
-            disabled={!editable}
+            disabled={!isAdmin}
             value={s.status}
             onValueChange={async (val) => {
               try {
@@ -464,18 +466,14 @@ function SurveysAdmin() {
     {
       key: "actions",
       header: "",
-      className: "text-right w-[140px]",
+      className: "text-right w-[200px]",
       render: (s) => {
-        const editable = canManageSurvey(s);
         return (
           <div className="flex items-center justify-end gap-2.5">
             <Button 
               variant="outline" size="icon" 
-              className={cn(
-                "h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-400 hover:text-primary transition-all shadow-sm bg-white dark:bg-slate-800",
-                !editable && "opacity-40 cursor-not-allowed hover:text-slate-400"
-              )}
-              disabled={!editable}
+              className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-400 hover:text-primary transition-all shadow-sm bg-white dark:bg-slate-800"
+              disabled={!isAdmin}
               onClick={() => { 
                 setEditing({ 
                   ...s, 
@@ -488,6 +486,14 @@ function SurveysAdmin() {
             </Button>
             <Button 
               variant="outline" size="icon" 
+              title={t("surveys.viewAuditLog")}
+              className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all shadow-sm bg-white dark:bg-slate-800" 
+              onClick={() => setAuditLogSurvey(s)}
+            >
+              <History className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="outline" size="icon" 
               className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all shadow-sm bg-white dark:bg-slate-800" 
               onClick={() => setPreviewTarget(s)}
             >
@@ -495,22 +501,16 @@ function SurveysAdmin() {
             </Button>
             <Button 
               variant="outline" size="icon" 
-              className={cn(
-                "h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-300 hover:text-slate-600 transition-all shadow-sm bg-white dark:bg-slate-800",
-                (!editable || saving) && "opacity-40 cursor-not-allowed hover:text-slate-300"
-              )}
+              className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-300 hover:text-slate-600 transition-all shadow-sm bg-white dark:bg-slate-800"
               onClick={() => handleClone(s.id)} 
-              disabled={!editable || saving}
+              disabled={!isAdmin || saving}
             >
               <Copy className="w-5 h-5" />
             </Button>
             <Button 
               variant="outline" size="icon" 
-              className={cn(
-                "h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-rose-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all shadow-sm bg-white dark:bg-slate-800",
-                !editable && "opacity-40 cursor-not-allowed hover:text-rose-300"
-              )}
-              disabled={!editable}
+              className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-rose-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all shadow-sm bg-white dark:bg-slate-800"
+              disabled={!isAdmin}
               onClick={() => setDeleteTarget(s.id)}
             >
               <Trash2 className="w-5 h-5" />
@@ -533,6 +533,7 @@ function SurveysAdmin() {
       
       {sectionModalSurvey && <SectionsModal sections={sections} sectionIds={sectionModalSurvey.sectionIds} lang={lang} onClose={() => setSectionModalSurvey(null)} />}
       {previewTarget && <PreviewSurveyDialog survey={previewTarget} onClose={() => setPreviewTarget(null)} />}
+      {auditLogSurvey && <SurveyAuditLogDialog survey={auditLogSurvey} onClose={() => setAuditLogSurvey(null)} />}
 
       <div className="flex items-start justify-between gap-6 pb-2">
         <div className="space-y-1.5">
@@ -669,7 +670,7 @@ function SurveysAdmin() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox checked={checked} onCheckedChange={() => toggleSection(sec.id)} className="h-5 w-5 rounded-md" />
                                 </div>
                              </div>

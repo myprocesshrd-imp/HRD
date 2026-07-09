@@ -331,72 +331,65 @@ function HomePage() {
 
   const greetingName = user ? (lang === "th" ? user.nameTh : user.nameEn) : "";
 
+  // Quick stats for hero
+  const activeSurveyCount = surveys.length;
+  const totalPosts = posts.length;
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* ── Compact Corporate Hero Banner ── */}
-      <div className="relative min-h-[170px] md:min-h-[200px] flex items-center overflow-hidden rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xl bg-slate-950 text-white">
-        {/* Deep Corporate Gradient Base */}
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,#080c1b_0%,#0f1b3d_50%,#162554_100%)]" />
-        
-        {/* Subtle Mesh */}
-        <div 
-          className="absolute inset-0 opacity-[0.05]" 
-          style={{ 
-            backgroundImage: `linear-gradient(#64748b 1px, transparent 1px), linear-gradient(90deg, #64748b 1px, transparent 1px)`,
-            backgroundSize: '48px 48px'
-          }} 
-        />
-        
-        {/* Accent Gradients */}
-        <div className="absolute -top-16 -right-12 w-80 h-80 rounded-full bg-gradient-to-br from-indigo-500/25 to-transparent blur-3xl animate-float-slow" />
-        <div className="absolute -bottom-12 -left-8 w-64 h-64 rounded-full bg-gradient-to-tr from-blue-500/20 to-transparent blur-3xl animate-float-delayed" />
-
-        {/* Compact Abstract Visual (Right) */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden xl:block w-[120px] h-[120px] pointer-events-none animate-float-slow">
-          <div className="absolute inset-0 rounded-full border border-white/10" />
-          <div className="absolute inset-[14px] rounded-full border border-white/20" />
-          <div className="absolute inset-[28px] rounded-full border border-white/30" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-xl bg-white/10 border border-white/30 flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-white" />
-          </div>
+      {/* ── Hero Banner ── */}
+      <div className="relative py-2">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[9px] font-mono uppercase tracking-[2.5px] text-slate-500 dark:text-slate-400">HR Pulse · Employee Portal</span>
         </div>
 
-        <div className="relative z-10 px-6 md:px-10 py-4 md:py-6 w-full max-w-5xl">
-          {/* Small Badge */}
-          <div className="inline-flex items-center gap-1.5 mb-2 text-[8px] font-mono uppercase tracking-[2px] text-white/60">
-            <div className="w-1 h-1 rounded-full bg-emerald-400" />
-            HR PULSE
+        {/* Greeting & Stats Row */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-2.5 text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+            <span className="animate-bounce inline-block">👋</span>
+            <span>
+              สวัสดี, <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-500 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">{greetingName || (lang === "th" ? "เพื่อนร่วมงาน" : "Colleague")}</span> Welcome to Real&Lo
+            </span>
+            <Sparkles className="w-6 h-6 text-amber-500 animate-pulse shrink-0" />
           </div>
 
-          {/* Headline */}
-          <h1 className="text-xl md:text-3xl font-extrabold tracking-tight leading-tight max-w-[28ch] bg-gradient-to-r from-white via-indigo-200 to-white bg-clip-text text-transparent animate-text-gradient">
-            Welcome to Real&Lo Website
-          </h1>
-
-          {/* Greeting + Compact CTAs */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <div className="text-xs text-white/80">
-              สวัสดี, <span className="font-semibold text-white">{greetingName || (lang === "th" ? "เพื่อนร่วมงาน" : "Colleague")}</span>
-            </div>
-
-            <div className="flex gap-2">
-              <Button 
-                size="sm"
-                onClick={() => navigate({ to: "/survey" })}
-                className="h-7 px-3 rounded-xl bg-white text-slate-950 hover:bg-white/90 text-[11px] font-semibold tracking-wider"
+          {/* Stats Chips (Formal & High Visibility) */}
+          <div className="flex items-center gap-3 self-start lg:self-auto">
+            {[
+              {
+                icon: ClipboardList,
+                value: activeSurveyCount,
+                labelTh: "แบบสำรวจเปิดอยู่",
+                labelEn: "Active Surveys",
+                color: "text-slate-950 dark:text-white border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900",
+                badgeBg: "bg-indigo-600 text-white font-extrabold shadow-sm shadow-indigo-200 dark:shadow-none",
+              },
+              {
+                icon: Megaphone,
+                value: totalPosts,
+                labelTh: "ประกาศทั้งหมด",
+                labelEn: "Announcements",
+                color: "text-slate-950 dark:text-white border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900",
+                badgeBg: "bg-violet-600 text-white font-extrabold shadow-sm shadow-violet-200 dark:shadow-none",
+              },
+            ].map((stat) => (
+              <div
+                key={stat.labelEn}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-sm transition-all hover:scale-[1.02]",
+                  stat.color
+                )}
               >
-                เริ่มทำแบบสำรวจ
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.scrollTo({ top: 480, behavior: 'smooth' })}
-                className="h-7 px-3 rounded-xl border-white/25 bg-white/5 hover:bg-white/10 text-white text-[11px]"
-              >
-                ดูประกาศ
-              </Button>
-            </div>
+                <stat.icon className="w-3.5 h-3.5 opacity-85 shrink-0 text-slate-500 dark:text-slate-400" />
+                <span>{lang === "th" ? stat.labelTh : stat.labelEn}</span>
+                <span className={cn("px-2 py-0.5 rounded-lg text-xs font-black min-w-[22px] text-center", stat.badgeBg)}>
+                  {stat.value}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -530,7 +523,7 @@ function HomePage() {
                     key={s.id}
                     survey={s}
                     lang={lang}
-                    onStart={() => navigate({ to: "/survey" })}
+                    onStart={() => navigate({ to: "/survey", search: { id: s.id } })}
                   />
                 ))
               ) : (

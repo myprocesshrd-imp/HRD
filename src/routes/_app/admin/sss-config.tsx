@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { useI18n } from "@/lib/i18n";
 import { getQuestionBank } from "@/services/api";
 import type { SurveySection, Question } from "@/services/api";
@@ -120,6 +121,15 @@ function SssConfigPage() {
   const [pendingDelete, setPendingDelete] = useState<SssQuestionMapping | null>(null);
   const [saving, setSaving] = useState<string | null>(null); // id being saved
   const [recalculating, setRecalculating] = useState(false);
+
+  const radarData = useMemo(() => {
+    if (!aggregate) return [];
+    return [
+      { subject: lang === "th" ? "SAY (พูดดี)" : "SAY", score: aggregate.say ?? 0, fullMark: 100 },
+      { subject: lang === "th" ? "STAY (อยู่นาน)" : "STAY", score: aggregate.stay ?? 0, fullMark: 100 },
+      { subject: lang === "th" ? "STRIVE (ทุ่มเท)" : "STRIVE", score: aggregate.strive ?? 0, fullMark: 100 },
+    ];
+  }, [aggregate, lang]);
 
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
@@ -297,29 +307,70 @@ function SssConfigPage() {
         </p>
       </div>
 
-      {/* ── KPI Score strip ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {kpis.map(kpi => {
-          const grade = scoreToGrade(kpi.score);
-          const meta = kpi.key !== "overall" ? SSS_DIMENSION_META[kpi.key as SssDimension] : null;
-          return (
-            <div key={kpi.key} className="p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-3 group hover:shadow-md transition-all">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{meta?.emoji ?? "📊"}</span>
-                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{kpi.label}</span>
-              </div>
-              {kpi.score !== null ? (
-                <>
-                  <div className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">{kpi.score}<span className="text-lg font-bold text-slate-300">%</span></div>
-                  <ScoreBar score={kpi.score} color={grade.color} />
+      {/* ── KPI & Radar Chart Layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: 4 KPI Cards */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+          {kpis.map(kpi => {
+            const grade = scoreToGrade(kpi.score);
+            const meta = kpi.key !== "overall" ? SSS_DIMENSION_META[kpi.key as SssDimension] : null;
+            return (
+              <div key={kpi.key} className="p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-3 group hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{meta?.emoji ?? "📊"}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{kpi.label}</span>
+                  </div>
+                  {kpi.score !== null ? (
+                    <>
+                      <div className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">{kpi.score}<span className="text-lg font-bold text-slate-300">%</span></div>
+                      <ScoreBar score={kpi.score} color={grade.color} />
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">{t("sss.noScore")}</div>
+                  )}
+                </div>
+                {kpi.score !== null && (
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{grade.label}</div>
-                </>
-              ) : (
-                <div className="text-sm text-muted-foreground">{t("sss.noScore")}</div>
-              )}
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Right: SSS Triangle Radar Chart */}
+        <Card className="border-none shadow-sm rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-5 flex flex-col justify-between min-h-[260px]">
+          <div className="flex items-center justify-between border-b pb-3 mb-2">
+            <div>
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                {lang === "th" ? "ดัชนี Say-Stay-Strive" : "Say-Stay-Strive Index"}
+              </h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">SSS Triangle Radar</p>
             </div>
-          );
-        })}
+            <span className="text-lg">🎯</span>
+          </div>
+          {aggregate && radarData.length > 0 ? (
+            <div className="h-[180px] w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                  <PolarGrid stroke="#e2e8f0" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#94a3b8' }} tickCount={3} />
+                  <Radar
+                    name="SSS"
+                    dataKey="score"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fill="#a78bfa"
+                    fillOpacity={0.25}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center flex-1 text-sm text-muted-foreground">{t("sss.noScore")}</div>
+          )}
+        </Card>
       </div>
 
       {/* ── Recalculate ── */}

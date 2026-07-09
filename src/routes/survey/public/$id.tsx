@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { getSurveySections, getSurvey, OPEN_FEEDBACK, submitSurveyResponse, getDemographicsConstants } from "@/services/api";
-import type { SurveySection, MockSurvey } from "@/services/api";
+import { getSurveySections, getSurvey, OPEN_FEEDBACK, submitSurveyResponse, getDemographicsConstants, getDepartmentsWithId, getBusinessUnits } from "@/services/api";
+import type { SurveySection, MockSurvey, Department, BusinessUnit } from "@/services/api";
 import { DEMOGRAPHIC_FIELDS_REGISTRY } from "@/lib/mock-data";
 import { QuestionRenderer } from "@/components/survey/question-renderer";
 import { loadDraft, saveDraft, clearDraft } from "@/services/survey.service";
@@ -47,6 +47,8 @@ function AnonymousSurveyPage() {
   const [pageKey, setPageKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [demoConstants, setDemoConstants] = useState<Record<string, string[]>>({});
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
+  const [allBusinessUnits, setAllBusinessUnits] = useState<BusinessUnit[]>([]);
   const [depSearch, setDepSearch] = useState("");
 
   useEffect(() => {
@@ -58,7 +60,11 @@ function AnonymousSurveyPage() {
   }, [id]);
 
   useEffect(() => {
-    getDemographicsConstants().then((c) => {
+    Promise.all([
+      getDemographicsConstants(),
+      getDepartmentsWithId(),
+      getBusinessUnits(),
+    ]).then(([c, depts, bus]) => {
       setDemoConstants({
         department: c.departments,
         businessUnit: c.businessUnits,
@@ -68,6 +74,8 @@ function AnonymousSurveyPage() {
         ageRange: c.ageRanges,
         tenure: c.tenure,
       });
+      setAllDepartments(depts);
+      setAllBusinessUnits(bus as BusinessUnit[]);
     });
   }, []);
 
@@ -132,16 +140,59 @@ function AnonymousSurveyPage() {
     VenetianMask, CalendarDays, Hash, MapPin, Building2, Users
   };
 
+  const buNameToId = useMemo(() => {
+    const map: Record<string, string> = {};
+    allBusinessUnits.forEach((bu) => {
+      if (bu.name_en) map[bu.name_en] = bu.id;
+      if (bu.name_th) map[bu.name_th] = bu.id;
+    });
+    return map;
+  }, [allBusinessUnits]);
+
   const activeDemoFields = useMemo(() => {
     const config = survey?.demographicFields;
+    const selectedBU = draft.profile["businessUnit"] ?? "";
+    const selectedBUId = selectedBU ? buNameToId[selectedBU] : undefined;
+
     return DEMOGRAPHIC_FIELDS_REGISTRY
       .filter(f => !config || f.key in config)
       .map(f => {
         let options = f.masterOptions as readonly string[];
         if (config && config[f.key]?.length > 0) {
           options = config[f.key];
+          if (f.key === "department" && selectedBUId && allDepartments.length > 0) {
+            const filtered = options.filter(opt => {
+              const deptObj = allDepartments.find(d => 
+                d.name_en === opt || 
+                d.name_th === opt
+              );
+              return deptObj ? (deptObj.business_unit_ids ?? []).includes(selectedBUId) : false;
+            });
+            options = filtered;
+          }
+        } else if (f.key === "businessUnit" && allBusinessUnits.length > 0) {
+          options = allBusinessUnits.map(b => lang === "th" && b.name_th ? b.name_th : b.name_en);
+        } else if (f.key === "department" && allDepartments.length > 0) {
+          if (selectedBUId) {
+            const filtered = allDepartments
+              .filter(d => (d.business_unit_ids ?? []).includes(selectedBUId))
+              .map(d => lang === "th" && d.name_th ? d.name_th : d.name_en);
+            options = filtered.length > 0 ? filtered : allDepartments.map(d => lang === "th" && d.name_th ? d.name_th : d.name_en);
+          } else {
+            options = allDepartments.map(d => lang === "th" && d.name_th ? d.name_th : d.name_en);
+          }
         } else if (demoConstants[f.key as keyof typeof demoConstants]?.length > 0) {
           options = demoConstants[f.key as keyof typeof demoConstants];
+          if (f.key === "department" && selectedBUId && allDepartments.length > 0) {
+            const filtered = options.filter(opt => {
+              const deptObj = allDepartments.find(d => 
+                d.name_en === opt || 
+                d.name_th === opt
+              );
+              return deptObj ? (deptObj.business_unit_ids ?? []).includes(selectedBUId) : false;
+            });
+            options = filtered;
+          }
         }
         return {
           key: f.key,
@@ -152,7 +203,7 @@ function AnonymousSurveyPage() {
           span: f.key === "tenure",
         };
       });
-  }, [survey, demoConstants]);
+  }, [survey, demoConstants, draft.profile, buNameToId, allDepartments, lang]);
 
   const demographicsComplete = activeDemoFields.every((f: any) => (draft.profile[f.key] ?? "").length > 0);
 
@@ -393,6 +444,9 @@ function AnonymousSurveyPage() {
                         value={draft.profile[f.key] ?? ""}
                         onValueChange={(v) => {
                           updateProfile(f.key, v);
+                          if (f.key === "businessUnit") {
+                            updateProfile("department", "");
+                          }
                         }}
                         onOpenChange={(open) => { if (!open) setDepSearch(""); }}
                       >
@@ -402,9 +456,9 @@ function AnonymousSurveyPage() {
                             <SelectValue placeholder={lang === "th" ? `เลือก${f.labelTh}` : `Select ${f.labelEn}`} />
                           </div>
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl border border-slate-200 shadow-xl p-1 max-h-[300px] overflow-y-auto">
+                        <SelectContent className="rounded-xl border border-slate-200 shadow-xl p-1 max-h-[300px] overflow-y-auto [&_[data-radix-select-viewport]]:overflow-visible">
                           {f.key === "department" && (
-                            <div className="sticky top-0 z-10 bg-white px-2 pb-2 pt-1 border-b border-slate-100 mb-1">
+                            <div className="sticky -top-1 z-10 bg-white px-2 pb-2 pt-2 border-b border-slate-100 mb-1">
                               <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <Input

@@ -642,7 +642,22 @@ export interface MockSurvey {
   creatorNameEn?: string;
   creatorNameTh?: string;
   creatorEmployeeCode?: string;
+  updatedBy?: string;
+  editorNameEn?: string;
+  editorNameTh?: string;
+  editorEmployeeCode?: string;
   updatedAt?: string;
+}
+
+export interface SurveyAuditLogEntry {
+  id: string;
+  surveyId: string;
+  action: "create" | "update" | "delete" | "clone";
+  actorNameEn?: string;
+  actorNameTh?: string;
+  actorEmployeeCode?: string;
+  changes: Record<string, unknown>;
+  createdAt: string;
 }
 
 export const MOCK_SURVEYS: MockSurvey[] = [

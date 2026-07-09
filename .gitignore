@@ -45,3 +45,7 @@ supabase/.temp/
 # Build artifacts
 tsc_output.txt
 routeTree.gen.ts
+
+# AI agent / dev tool internals
+.aionrs/
+terminals/

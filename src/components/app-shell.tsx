@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, ClipboardList, ListChecks, Users, Building2, BarChart3,
-  UserCircle2, LogOut, ShieldCheck, Globe, Moon, Sun, FileEdit, BarChart2,
+  LogOut, ShieldCheck, Globe, Moon, Sun, FileEdit, BarChart2,
   Bell, Menu, ChevronRight, ChevronLeft, Activity, Signal,
   Clock, FileText, Layers, Database, Compass, Home, Target,
 } from "lucide-react";
@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { ProfileDialog } from "@/components/profile-dialog";
 
 // ── Isolated clock – avoids re-rendering the whole shell every second ──
 const LiveClock = memo(() => {
@@ -49,16 +50,13 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/home",             labelKey: "nav.home",          icon: Home },
   { to: "/dashboard",        labelKey: "nav.dashboard",     icon: LayoutDashboard, roles: ["super_admin","hr_admin","manager"] },
-  { to: "/results",          labelKey: "nav.results",       icon: BarChart3,    roles: ["super_admin","hr_admin","manager"] },
   { to: "/admin/surveys",    labelKey: "nav.surveys",       icon: ClipboardList,roles: ["super_admin","hr_admin"] },
   { to: "/admin/home",       labelKey: "nav.adminHome",     icon: Home,          roles: ["super_admin","hr_admin"] },
   { to: "/admin/questions",  labelKey: "nav.questions",     icon: ListChecks,   roles: ["super_admin","hr_admin"] },
   { to: "/admin/users",      labelKey: "nav.users",         icon: Users,        roles: ["super_admin","hr_admin"] },
   { to: "/admin/personnel-mapping",labelKey: "nav.personnelMapping",icon: Compass, roles: ["super_admin","hr_admin"] },
-  { to: "/admin/raw-data",      labelKey: "nav.rawData",      icon: Database,      roles: ["super_admin","hr_admin"] },
   { to: "/admin/sss-config",    labelKey: "nav.sssConfig",    icon: Target,        roles: ["super_admin","hr_admin"] },
   { to: "/reports",          labelKey: "nav.reports",       icon: BarChart2,    roles: ["super_admin","hr_admin","manager"] },
-  { to: "/profile",          labelKey: "nav.profile",       icon: UserCircle2 },
 ];
 
 
@@ -152,6 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("hrpulse.sidebar.open") !== "false";
@@ -185,8 +184,45 @@ export function AppShell({ children }: { children: ReactNode }) {
   const mainItems  = useMemo(() => items.filter((n) => !n.to.startsWith("/admin")), [items]);
   const adminItems = useMemo(() => items.filter((n) => n.to.startsWith("/admin")), [items]);
 
+  const profileButton = user ? (
+    <button
+      type="button"
+      onClick={() => setProfileOpen(true)}
+      className={cn(
+        "w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left",
+        !sidebarOpen && "justify-center"
+      )}
+    >
+      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
+        {user.avatarUrl && !avatarFailed ? (
+          <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setAvatarFailed(true)} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[12px] font-bold text-foreground bg-muted">
+            {user.nameEn.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+          </div>
+        )}
+      </div>
+      {sidebarOpen && (
+        <div className="min-w-0 flex-1">
+          <div className="text-[15px] font-bold text-foreground truncate">{lang === "th" ? user.nameTh : user.nameEn}</div>
+          <div className="text-[12px] font-medium text-muted-foreground truncate capitalize">{user.role.replace("_", " ")}</div>
+        </div>
+      )}
+    </button>
+  ) : null;
+
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-600 selection:text-white">
+
+      {user && (
+        <ProfileDialog
+          user={user}
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          avatarFailed={avatarFailed}
+          onAvatarError={() => setAvatarFailed(true)}
+        />
+      )}
 
       {/* ── Desktop Sidebar ── */}
       <aside className={cn(
@@ -225,31 +261,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* User Footer */}
         <div className="border-t border-slate-100 dark:border-slate-800 p-2.5 space-y-1">
-          {user && (
-            <Link
-              to="/profile"
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                !sidebarOpen && "justify-center"
-              )}
-            >
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
-                {user.avatarUrl && !avatarFailed ? (
-                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setAvatarFailed(true)} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[12px] font-bold text-foreground bg-muted">
-                    {user.nameEn.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                  </div>
-                )}
-              </div>
-              {sidebarOpen && (
-                <div className="min-w-0 flex-1">
-                  <div className="text-[15px] font-bold text-foreground truncate">{lang === "th" ? user.nameTh : user.nameEn}</div>
-                  <div className="text-[12px] font-medium text-muted-foreground truncate capitalize">{user.role.replace("_", " ")}</div>
-                </div>
-              )}
-            </Link>
-          )}
+          {profileButton}
         </div>
 
         {/* Toggle button */}
@@ -289,7 +301,28 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <nav className="flex-1 py-4">
                     <NavLinks mainItems={mainItems} adminItems={adminItems} pathname={pathname} sidebarOpen t={t} onClick={() => setMobileNavOpen(false)} />
                   </nav>
-                  <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                    {user && (
+                      <button
+                        type="button"
+                        onClick={() => { setMobileNavOpen(false); setProfileOpen(true); }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
+                          {user.avatarUrl && !avatarFailed ? (
+                            <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setAvatarFailed(true)} />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[12px] font-bold text-foreground bg-muted">
+                              {user.nameEn.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[15px] font-bold text-foreground truncate">{lang === "th" ? user.nameTh : user.nameEn}</div>
+                          <div className="text-[12px] font-medium text-muted-foreground truncate capitalize">{user.role.replace("_", " ")}</div>
+                        </div>
+                      </button>
+                    )}
                     <button onClick={handleLogout} className="w-full h-10 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 font-semibold text-sm flex items-center justify-center gap-2">
                       <LogOut className="w-4 h-4" /> Sign out
                     </button>

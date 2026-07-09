@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
+import { z } from "zod";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { getSurveys, getSurveySections, submitSurveyResponse, getDemographicsConstants } from "@/services/api";
+import { getSurveys, getSurveySections, submitSurveyResponse, getDemographicsConstants, getDepartmentsWithId, getBusinessUnits } from "@/services/api";
+import type { Department, BusinessUnit } from "@/services/api";
 import type { MockSurvey, SurveySection } from "@/services/api";
 import { DEMOGRAPHIC_FIELDS_REGISTRY } from "@/lib/mock-data";
 import { QuestionRenderer } from "@/components/survey/question-renderer";
@@ -29,7 +31,12 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const surveySearchSchema = z.object({
+  id: z.string().optional(),
+});
+
 export const Route = createFileRoute("/_app/survey")({
+  validateSearch: (search) => surveySearchSchema.parse(search),
   component: SurveyPageWrapper,
 });
 
@@ -40,135 +47,6 @@ interface DraftState {
   answers: Record<string, number | string | string[] | Record<string, string>>;
   feedback: Record<string, string>;
   startedAt: number;
-}
-
-// ── Campaign Inventory ──
-function CampaignInventory({ onSelect }: { onSelect: (survey: MockSurvey) => void }) {
-  const { t, lang } = useI18n();
-  const [surveys, setSurveys] = useState<MockSurvey[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getSurveys().then((data) => {
-      setSurveys(data.filter((s) => s.status === "Active"));
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-6">
-      <div className="relative">
-        <div className="w-12 h-12 rounded-2xl border-4 border-primary/10 border-t-primary animate-spin" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Rocket className="w-5 h-5 text-primary/70" />
-        </div>
-      </div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse italic">{lang === "th" ? "กำลังโหลดข้อมูล..." : "Loading surveys..."}</p>
-    </div>
-  );
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-primary">
-            <Target className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em]">{lang === "th" ? "แบบสำรวจทั้งหมด" : "All Surveys"}</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-white leading-tight">
-            {t("survey.title")}
-          </h1>
-          <p className="text-sm font-medium text-muted-foreground/80 max-w-lg">
-            {lang === "th" 
-              ? "รวมแบบสำรวจความผูกพันของพนักงานทั้งหมด เลือกแบบสำรวจที่ต้องการเพื่อร่วมแสดงความคิดเห็น" 
-              : "Enterprise campaign intelligence center. Share your voice to drive organizational excellence."}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800">
-          <div className="text-right">
-            <div className="text-2xl font-bold tabular-nums leading-none text-slate-900 dark:text-white">{surveys.length}</div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mt-1">{lang === "th" ? "รายการ" : "Items"}</div>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <Zap className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {surveys.length > 0 ? surveys.map((s) => (
-          <Card 
-            key={s.id} 
-            className="group relative overflow-hidden bg-white dark:bg-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-800 hover:border-primary/30 hover:shadow-lg transition-all duration-300 cursor-pointer rounded-2xl" 
-            onClick={() => onSelect(s)}
-          >
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
-              <ClipboardList className="w-20 h-20" />
-            </div>
-            
-            <CardContent className="p-6 space-y-6 relative">
-              <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-primary group-hover:scale-105 transition-all shadow-sm border border-slate-100 dark:border-slate-700">
-                  <ClipboardList className="w-6 h-6" />
-                </div>
-                <Badge variant={s.status === "Active" ? "default" : "secondary"} className="h-6 text-[9px] font-bold uppercase tracking-wider px-3 rounded-full">
-                  {s.status}
-                </Badge>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold tracking-tight group-hover:text-primary transition-colors leading-tight line-clamp-1">
-                  {lang === "th" ? s.titleTh : s.titleEn}
-                </h3>
-                <div className="flex flex-wrap items-center gap-y-2 gap-x-5">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                    <ListChecks className="w-4 h-4 text-primary" />
-                    {s.sectionIds.length} {lang === "th" ? "หมวดหมู่" : "Categories"}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                    <CalendarDays className="w-4 h-4 text-primary" />
-                    {lang === "th" ? "สิ้นสุด" : "Ends"} {s.endDate}
-                  </div>
-                  <Badge variant="outline" className={cn(
-                    "h-6 text-[9px] font-bold uppercase tracking-widest rounded-lg border",
-                    s.surveyType === "anonymous" ? "border-indigo-200 bg-indigo-50 text-indigo-600" : "border-primary/20 bg-primary/5 text-primary"
-                  )}>
-                    {s.surveyType === "anonymous"
-                      ? (lang === "th" ? "ไม่ระบุตัวตน" : "Anonymous")
-                      : (lang === "th" ? "ระบุตัวตน" : "Identified")}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-4">
-                 <div className="flex -space-x-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shadow-sm">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${s.id}${i}`} alt="user" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                  <div className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 bg-primary/10 text-primary text-[8px] font-bold flex items-center justify-center shadow-sm">
-                    +{s.responses}
-                  </div>
-                </div>
-                <Button size="sm" className="h-10 px-8 rounded-xl font-bold uppercase tracking-wider text-xs shadow-md group-hover:bg-primary group-hover:shadow-primary/20 transition-all">
-                  {t("survey.start")}
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )) : (
-          <div className="col-span-full text-center py-20 space-y-4 opacity-60">
-            <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mx-auto border border-dashed border-slate-300">
-              <ClipboardList className="w-8 h-8 text-slate-400" />
-            </div>
-            <p className="text-sm font-bold text-slate-500 tracking-tight italic">{lang === "th" ? "ไม่มีแบบสำรวจที่เปิดให้ตอบขณะนี้" : "No active surveys at this time"}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ── Survey Flow ──
@@ -185,10 +63,16 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
   const [profileConfirmed, setProfileConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [demoConstants, setDemoConstants] = useState<Record<string, string[]>>({});
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
+  const [allBusinessUnits, setAllBusinessUnits] = useState<BusinessUnit[]>([]);
   const [depSearch, setDepSearch] = useState("");
 
   useEffect(() => {
-    getDemographicsConstants().then((c) => {
+    Promise.all([
+      getDemographicsConstants(),
+      getDepartmentsWithId(),
+      getBusinessUnits(),
+    ]).then(([c, depts, bus]) => {
       setDemoConstants({
         department: c.departments,
         businessUnit: c.businessUnits,
@@ -198,6 +82,8 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
         ageRange: c.ageRanges,
         tenure: c.tenure,
       });
+      setAllDepartments(depts);
+      setAllBusinessUnits(bus as BusinessUnit[]);
     });
   }, []);
 
@@ -330,18 +216,65 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
     VenetianMask, CalendarDays, Hash, MapPin, Building2, Users
   };
 
+  // Build map: BU name → BU id
+  const buNameToId = useMemo(() => {
+    const map: Record<string, string> = {};
+    allBusinessUnits.forEach((bu) => {
+      if (bu.name_en) map[bu.name_en] = bu.id;
+      if (bu.name_th) map[bu.name_th] = bu.id;
+    });
+    return map;
+  }, [allBusinessUnits]);
+
   const activeDemoFields = useMemo(() => {
     const config = survey?.demographicFields;
+    const selectedBU = draft.profile["businessUnit"] ?? "";
+    const selectedBUId = selectedBU ? buNameToId[selectedBU] : undefined;
+
     return DEMOGRAPHIC_FIELDS_REGISTRY
       .filter(f => !config || f.key in config)
       .map(f => {
         let options = f.masterOptions as readonly string[];
         const demoKey = f.key === "department" ? "department" : f.key;
+
         if (config && config[f.key]?.length > 0) {
           options = config[f.key];
+          if (f.key === "department" && selectedBUId && allDepartments.length > 0) {
+            const filtered = options.filter(opt => {
+              const deptObj = allDepartments.find(d => 
+                d.name_en === opt || 
+                d.name_th === opt
+              );
+              return deptObj ? (deptObj.business_unit_ids ?? []).includes(selectedBUId) : false;
+            });
+            options = filtered;
+          }
+        } else if (f.key === "businessUnit" && allBusinessUnits.length > 0) {
+          options = allBusinessUnits.map(b => lang === "th" && b.name_th ? b.name_th : b.name_en);
+        } else if (f.key === "department" && allDepartments.length > 0) {
+          // Filter departments by selected BU when possible
+          if (selectedBUId) {
+            const filtered = allDepartments
+              .filter(d => (d.business_unit_ids ?? []).includes(selectedBUId))
+              .map(d => lang === "th" && d.name_th ? d.name_th : d.name_en);
+            options = filtered.length > 0 ? filtered : allDepartments.map(d => lang === "th" && d.name_th ? d.name_th : d.name_en);
+          } else {
+            options = allDepartments.map(d => lang === "th" && d.name_th ? d.name_th : d.name_en);
+          }
         } else if (demoConstants[demoKey]?.length > 0) {
           options = demoConstants[demoKey];
+          if (f.key === "department" && selectedBUId && allDepartments.length > 0) {
+            const filtered = options.filter(opt => {
+              const deptObj = allDepartments.find(d => 
+                d.name_en === opt || 
+                d.name_th === opt
+              );
+              return deptObj ? (deptObj.business_unit_ids ?? []).includes(selectedBUId) : false;
+            });
+            options = filtered;
+          }
         }
+
         return {
           key: f.key,
           labelTh: f.labelTh,
@@ -351,7 +284,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
           span: f.key === "tenure",
         };
       });
-  }, [survey, demoConstants]);
+  }, [survey, demoConstants, draft.profile, buNameToId, allDepartments, lang]);
 
   const demographicsComplete = activeDemoFields.length === 0 || activeDemoFields.every((f: any) => (draft.profile[f.key] ?? "").length > 0);
 
@@ -628,7 +561,13 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                   </Label>
                   <Select
                     value={draft.profile[f.key] ?? ""}
-                    onValueChange={(v) => updateProfile(f.key, v)}
+                    onValueChange={(v) => {
+                      updateProfile(f.key, v);
+                      // Clear department when BU changes
+                      if (f.key === "businessUnit") {
+                        updateProfile("department", "");
+                      }
+                    }}
                     onOpenChange={(open) => { if (!open) setDepSearch(""); }}
                   >
                     <SelectTrigger className="h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-primary/20 transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm">
@@ -637,9 +576,9 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
                         <SelectValue placeholder={lang === "th" ? `เลือก${f.labelTh}` : `Select ${f.labelEn}`} />
                       </div>
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-1 max-h-[300px] overflow-y-auto">
+                    <SelectContent className="rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-1 max-h-[300px] overflow-y-auto [&_[data-radix-select-viewport]]:overflow-visible">
                       {f.key === "department" && (
-                        <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 px-2 pb-2 pt-1 border-b border-slate-100 dark:border-slate-800 mb-1">
+                        <div className="sticky -top-1 z-10 bg-white dark:bg-slate-900 px-2 pb-2 pt-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <Input
@@ -802,9 +741,46 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
 
 // ── Wrapper ──
 function SurveyPageWrapper() {
-  const [selected, setSelected] = useState<MockSurvey | null>(null);
-  if (!selected) return <CampaignInventory onSelect={setSelected} />;
-  return <SurveyFlow survey={selected} onBack={() => setSelected(null)} />;
+  const { id } = Route.useSearch();
+  const [surveys, setSurveys] = useState<MockSurvey[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getSurveys().then((data) => {
+      setSurveys(data.filter((s) => s.status === "Active"));
+      setLoading(false);
+    });
+  }, []);
+
+  const navigate = useNavigate();
+
+  const selectedSurvey = useMemo(() => {
+    if (!id) return null;
+    return surveys.find((s) => s.id === id) || null;
+  }, [id, surveys]);
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[50vh] gap-6">
+        <div className="w-12 h-12 rounded-xl border-4 border-primary/10 border-t-primary animate-spin" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground italic">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!selectedSurvey) {
+    return <RedirectToHome />;
+  }
+
+  return <SurveyFlow survey={selectedSurvey} onBack={() => navigate({ to: "/" })} />;
+}
+
+function RedirectToHome() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate({ to: "/" });
+  }, [navigate]);
+  return null;
 }
 
 export default SurveyPageWrapper;

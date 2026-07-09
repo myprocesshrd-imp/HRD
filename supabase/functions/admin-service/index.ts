@@ -62,10 +62,50 @@ serve(async (req) => {
       }
     };
 
+    const getSurveySectionCodes = async (surveyId: string) => {
+      const { data } = await supabaseClient
+        .from("survey_sections")
+        .select("sections(code)")
+        .eq("survey_id", surveyId);
+      return data?.map((s: any) => s.sections?.code).filter(Boolean) ?? [];
+    };
+
+    const logSurveyAudit = async (
+      surveyId: string,
+      auditActorId: string,
+      auditAction: string,
+      changes: Record<string, unknown> = {},
+    ) => {
+      await supabaseClient.from("survey_audit_log").insert([{
+        survey_id: surveyId,
+        actor_id: auditActorId,
+        action: auditAction,
+        changes,
+      }]);
+    };
+
+    const computeSurveyChanges = (
+      before: Record<string, unknown>,
+      after: Record<string, unknown>,
+    ) => {
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      for (const key of Object.keys(after)) {
+        if (after[key] === undefined) continue;
+        if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+          changes[key] = { from: before[key] ?? null, to: after[key] };
+        }
+      }
+      return changes;
+    };
+
     switch (action) {
       case "SURVEY_CREATE": {
         const { section_ids, ...surveyData } = payload;
-        ({ data: result, error } = await supabaseClient.from("surveys").insert([{ ...surveyData, created_by: actor.id }]).select().single());
+        ({ data: result, error } = await supabaseClient.from("surveys").insert([{
+          ...surveyData,
+          created_by: actor.id,
+          updated_by: actor.id,
+        }]).select().single());
         if (error) {
           console.error("Error creating survey:", error);
           throw new Error(`Database error: ${error.message} (${error.code})`);
@@ -73,27 +113,66 @@ serve(async (req) => {
         if (result && section_ids) {
           await updateSurveySections(result.id, section_ids);
         }
+        if (result) {
+          await logSurveyAudit(result.id, actor.id, "create", {
+            title_en: result.title_en,
+            title_th: result.title_th,
+            status: result.status,
+            survey_type: result.survey_type,
+            section_ids: section_ids ?? [],
+          });
+        }
         break;
       }
       
       case "SURVEY_UPDATE": {
         const { id, section_ids, ...surveyData } = payload;
+        const { data: before } = await supabaseClient.from("surveys").select("*").eq("id", id).single();
+        const beforeSections = await getSurveySectionCodes(id);
+        const changes: Record<string, { from: unknown; to: unknown }> = {};
+
+        if (before) {
+          Object.assign(changes, computeSurveyChanges(before as Record<string, unknown>, surveyData));
+        }
+        if (section_ids !== undefined && JSON.stringify(beforeSections) !== JSON.stringify(section_ids)) {
+          changes.section_ids = { from: beforeSections, to: section_ids };
+        }
+
         if (Object.keys(surveyData).length > 0) {
-          ({ data: result, error } = await supabaseClient.from("surveys").update(surveyData).eq("id", id).select().single());
+          ({ data: result, error } = await supabaseClient.from("surveys").update({
+            ...surveyData,
+            updated_by: actor.id,
+          }).eq("id", id).select().single());
           if (error) {
             console.error("Error updating survey:", error);
             throw new Error(`Database error: ${error.message} (${error.code})`);
           }
+        } else if (section_ids !== undefined) {
+          ({ data: result, error } = await supabaseClient.from("surveys").update({
+            updated_by: actor.id,
+          }).eq("id", id).select().single());
         }
         if (section_ids !== undefined) {
           await updateSurveySections(id, section_ids);
         }
+        if (Object.keys(changes).length > 0) {
+          await logSurveyAudit(id, actor.id, "update", changes);
+        }
         break;
       }
 
-      case "SURVEY_DELETE":
+      case "SURVEY_DELETE": {
+        const { data: snapshot } = await supabaseClient
+          .from("surveys")
+          .select("title_en, title_th, status, survey_type")
+          .eq("id", payload.id)
+          .single();
+        if (snapshot) {
+          await logSurveyAudit(payload.id, actor.id, "delete", { snapshot });
+        }
         ({ error } = await supabaseClient.from("surveys").delete().eq("id", payload.id));
         break;
+      }
 
       case "SURVEY_CLONE": {
         const { data: source } = await supabaseClient.from("surveys").select("*, survey_sections(sections(code))").eq("id", payload.id).single();
@@ -106,11 +185,18 @@ serve(async (req) => {
             title_en: `${cloneData.title_en} (Copy)`,
             title_th: `${cloneData.title_th} (สำเนา)`,
             status: "Draft",
-            created_by: actor.id
+            created_by: actor.id,
+            updated_by: actor.id,
           }]).select().single());
 
           if (!error && result) {
             await updateSurveySections(result.id, section_ids);
+            await logSurveyAudit(payload.id, actor.id, "clone", { cloned_to: result.id });
+            await logSurveyAudit(result.id, actor.id, "create", {
+              cloned_from: payload.id,
+              title_en: result.title_en,
+              title_th: result.title_th,
+            });
           }
         }
         break;

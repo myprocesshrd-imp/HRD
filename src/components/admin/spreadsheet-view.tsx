@@ -356,8 +356,8 @@ export function SpreadsheetView({
                   className={cn(
                     "group cursor-pointer border-b border-slate-100 dark:border-slate-800 transition-colors",
                     isEven
-                      ? "bg-white dark:bg-slate-900/50"
-                      : "bg-slate-50/50 dark:bg-slate-900/30",
+                      ? "bg-white dark:bg-slate-900"
+                      : "bg-slate-50 dark:bg-slate-950",
                     "hover:bg-primary/5 dark:hover:bg-primary/10"
                   )}
                   onClick={() => onRowClick(r)}
@@ -367,7 +367,7 @@ export function SpreadsheetView({
                     style={bodyCellStyle(0)}
                     className={cn(
                       "border-r border-slate-100 dark:border-slate-800 px-3 overflow-hidden",
-                      isEven ? "bg-white dark:bg-slate-900/50" : "bg-slate-50/50 dark:bg-slate-900/30",
+                      isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-slate-950",
                       "group-hover:bg-primary/5 dark:group-hover:bg-primary/10"
                     )}
                   >
@@ -390,7 +390,7 @@ export function SpreadsheetView({
                         style={bodyCellStyle(colIdx)}
                         className={cn(
                           "border-r border-slate-100 dark:border-slate-800 px-3 overflow-hidden",
-                          isEven ? "bg-white dark:bg-slate-900/50" : "bg-slate-50/50 dark:bg-slate-900/30",
+                          isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-slate-950",
                           "group-hover:bg-primary/5 dark:group-hover:bg-primary/10"
                         )}
                       >

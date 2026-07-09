@@ -1,8 +1,8 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { invokeAdminService } from "./admin-helper";
-import type { MockSurvey, SurveySection } from "@/lib/mock-data";
+import type { MockSurvey, SurveySection, SurveyAuditLogEntry } from "@/lib/mock-data";
 
-export type { MockSurvey, SurveySection };
+export type { MockSurvey, SurveySection, SurveyAuditLogEntry };
 export type SurveyStatus = "Active" | "Closed" | "Draft";
 
 interface SupabaseSurvey {
@@ -18,8 +18,15 @@ interface SupabaseSurvey {
   survey_responses?: { status: string }[];
   demographic_fields?: Record<string, string[]> | null;
   created_by?: string | null;
+  updated_by?: string | null;
   updated_at?: string | null;
   creator?: {
+    id: string;
+    name_en: string;
+    name_th: string;
+    employee_code: string;
+  } | null;
+  editor?: {
     id: string;
     name_en: string;
     name_th: string;
@@ -44,20 +51,28 @@ function mapSupabaseSurvey(s: SupabaseSurvey): MockSurvey {
     creatorNameEn: s.creator?.name_en ?? undefined,
     creatorNameTh: s.creator?.name_th ?? undefined,
     creatorEmployeeCode: s.creator?.employee_code ?? undefined,
+    updatedBy: s.updated_by ?? undefined,
+    editorNameEn: s.editor?.name_en ?? undefined,
+    editorNameTh: s.editor?.name_th ?? undefined,
+    editorEmployeeCode: s.editor?.employee_code ?? undefined,
     updatedAt: s.updated_at ?? undefined,
   };
 }
 
+const surveySelectQuery = `
+  *,
+  creator:users!created_by(id, name_en, name_th, employee_code),
+  editor:users!updated_by(id, name_en, name_th, employee_code),
+  survey_sections!inner(section_id, sections(code)),
+  survey_responses(status)
+`;
+
 export async function getSurveys(): Promise<MockSurvey[]> {
   try {
-    const { data, error } = await supabase
+    const client = supabaseAdmin ?? supabase;
+    const { data, error } = await client
       .from("surveys")
-      .select(`
-        *,
-        creator:users!created_by(id, name_en, name_th, employee_code),
-        survey_sections!inner(section_id, sections(code)),
-        survey_responses(status)
-      `)
+      .select(surveySelectQuery)
       .order("created_at", { ascending: false });
     
     if (!error && data && data.length > 0) {
@@ -73,11 +88,13 @@ export async function getSurveys(): Promise<MockSurvey[]> {
 
 export async function getSurvey(id: string): Promise<MockSurvey | undefined> {
   try {
-    const { data, error } = await supabase
+    const client = supabaseAdmin ?? supabase;
+    const { data, error } = await client
       .from("surveys")
       .select(`
         *,
         creator:users!created_by(id, name_en, name_th, employee_code),
+        editor:users!updated_by(id, name_en, name_th, employee_code),
         survey_sections(section_id, sections!inner(code)),
         survey_responses(status)
       `)
@@ -197,6 +214,111 @@ async function resolveSectionCodes(codes: string[]): Promise<string[]> {
   return codes.map((code) => map.get(code)).filter(Boolean) as string[];
 }
 
+const sanitizeDate = (d?: string) => (d === "—" || !d ? null : d);
+
+function getSessionEmployeeCode(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const session = localStorage.getItem("hrpulse.session");
+    if (session) return JSON.parse(session).employeeCode as string;
+  } catch {}
+  return undefined;
+}
+
+async function resolveActorUserId(): Promise<string | null> {
+  const code = getSessionEmployeeCode();
+  const client = supabaseAdmin ?? supabase;
+  if (!code || !client) return null;
+  const { data } = await client.from("users").select("id").eq("employee_code", code).maybeSingle();
+  return data?.id ?? null;
+}
+
+async function fetchSurveyDbSnapshot(id: string) {
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return null;
+  const { data: row } = await client.from("surveys").select("*").eq("id", id).maybeSingle();
+  if (!row) return null;
+  const { data: sections } = await client
+    .from("survey_sections")
+    .select("sections(code)")
+    .eq("survey_id", id);
+  const sectionIds = sections?.map((s: { sections?: { code?: string } | null }) => s.sections?.code).filter(Boolean) ?? [];
+  return { ...row, section_ids: sectionIds };
+}
+
+function toDbSurveyFields(data: Partial<{
+  titleEn: string;
+  titleTh: string;
+  status: SurveyStatus;
+  surveyType: "anonymous" | "identified";
+  startDate: string;
+  endDate: string;
+  target: number;
+  sectionIds: string[];
+  demographicFields?: Record<string, string[]>;
+}>) {
+  const fields: Record<string, unknown> = {};
+  if (data.titleEn !== undefined) fields.title_en = data.titleEn;
+  if (data.titleTh !== undefined) fields.title_th = data.titleTh;
+  if (data.status !== undefined) fields.status = data.status.toLowerCase();
+  if (data.surveyType !== undefined) fields.survey_type = data.surveyType;
+  if (data.startDate !== undefined) fields.start_date = sanitizeDate(data.startDate);
+  if (data.endDate !== undefined) fields.end_date = sanitizeDate(data.endDate);
+  if (data.target !== undefined) fields.target_responses = data.target;
+  if (data.demographicFields !== undefined) fields.demographic_fields = data.demographicFields;
+  if (data.sectionIds !== undefined) fields.section_ids = data.sectionIds;
+  return fields;
+}
+
+function computeSurveyChanges(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+) {
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
+  for (const key of Object.keys(after)) {
+    if (after[key] === undefined) continue;
+    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+      changes[key] = { from: before[key] ?? null, to: after[key] };
+    }
+  }
+  return changes;
+}
+
+async function writeSurveyAuditLog(
+  surveyId: string,
+  action: SurveyAuditLogEntry["action"],
+  changes: Record<string, unknown> = {},
+) {
+  const client = supabaseAdmin ?? supabase;
+  const actorId = await resolveActorUserId();
+  if (!client || !actorId) {
+    console.warn("[writeSurveyAuditLog] skipped — no client or actor");
+    return;
+  }
+
+  const { data: recent } = await client
+    .from("survey_audit_log")
+    .select("id")
+    .eq("survey_id", surveyId)
+    .eq("action", action)
+    .eq("actor_id", actorId)
+    .gte("created_at", new Date(Date.now() - 5000).toISOString())
+    .limit(1);
+  if (recent && recent.length > 0) return;
+
+  const { error } = await client.from("survey_audit_log").insert([{
+    survey_id: surveyId,
+    actor_id: actorId,
+    action,
+    changes,
+  }]);
+  if (error) console.error("[writeSurveyAuditLog]", error.message);
+
+  if (action !== "delete") {
+    await client.from("surveys").update({ updated_by: actorId }).eq("id", surveyId);
+  }
+}
+
 export async function createSurvey(data: {
   titleEn: string;
   titleTh: string;
@@ -208,7 +330,6 @@ export async function createSurvey(data: {
   sectionIds: string[];
   demographicFields?: Record<string, string[]>;
 }): Promise<string> {
-  const sanitizeDate = (d?: string) => (d === "—" || !d ? null : d);
   const result = await invokeAdminService("SURVEY_CREATE", {
     title_en: data.titleEn,
     title_th: data.titleTh,
@@ -217,8 +338,15 @@ export async function createSurvey(data: {
     start_date: sanitizeDate(data.startDate),
     end_date: sanitizeDate(data.endDate),
     target_responses: data.target,
-    section_ids: data.sectionIds, // Handled inside Edge Function
+    section_ids: data.sectionIds,
     demographic_fields: data.demographicFields,
+  });
+  await writeSurveyAuditLog(result.id, "create", {
+    title_en: data.titleEn,
+    title_th: data.titleTh,
+    status: data.status.toLowerCase(),
+    survey_type: data.surveyType,
+    section_ids: data.sectionIds,
   });
   return result.id;
 }
@@ -234,7 +362,8 @@ export async function updateSurvey(id: string, data: Partial<{
   sectionIds: string[];
   demographicFields?: Record<string, string[]>;
 }>): Promise<void> {
-  const sanitizeDate = (d?: string) => (d === "—" || !d ? null : d);
+  const before = await fetchSurveyDbSnapshot(id);
+  const afterFields = toDbSurveyFields(data);
 
   await invokeAdminService("SURVEY_UPDATE", {
     id,
@@ -248,15 +377,76 @@ export async function updateSurvey(id: string, data: Partial<{
     section_ids: data.sectionIds,
     demographic_fields: data.demographicFields,
   });
+
+  if (before) {
+    const changes = computeSurveyChanges(before as Record<string, unknown>, afterFields);
+    if (Object.keys(changes).length > 0) {
+      await writeSurveyAuditLog(id, "update", changes);
+    }
+  }
 }
 
 
 export async function deleteSurvey(id: string): Promise<void> {
+  const before = await fetchSurveyDbSnapshot(id);
+  await writeSurveyAuditLog(id, "delete", {
+    snapshot: before
+      ? { title_en: before.title_en, title_th: before.title_th, status: before.status }
+      : null,
+  });
   await invokeAdminService("SURVEY_DELETE", { id });
 }
 
 export async function cloneSurvey(id: string): Promise<string> {
   const result = await invokeAdminService("SURVEY_CLONE", { id });
+  await writeSurveyAuditLog(id, "clone", { cloned_to: result.id });
+  await writeSurveyAuditLog(result.id, "create", { cloned_from: id });
   return result.id;
+}
+
+export async function getSurveyAuditLog(surveyId: string): Promise<SurveyAuditLogEntry[]> {
+  try {
+    const client = supabaseAdmin ?? supabase;
+    const { data, error } = await client
+      .from("survey_audit_log")
+      .select(`
+        id,
+        survey_id,
+        action,
+        changes,
+        created_at,
+        actor:users!actor_id(name_en, name_th, employee_code)
+      `)
+      .eq("survey_id", surveyId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getSurveyAuditLog]", error.message);
+      return [];
+    }
+
+    if (data) {
+      return data.map((row: {
+        id: string;
+        survey_id: string;
+        action: SurveyAuditLogEntry["action"];
+        changes: Record<string, unknown>;
+        created_at: string;
+        actor?: { name_en?: string; name_th?: string; employee_code?: string } | null;
+      }) => ({
+        id: row.id,
+        surveyId: row.survey_id,
+        action: row.action,
+        changes: row.changes ?? {},
+        createdAt: row.created_at,
+        actorNameEn: row.actor?.name_en,
+        actorNameTh: row.actor?.name_th,
+        actorEmployeeCode: row.actor?.employee_code,
+      }));
+    }
+  } catch (err) {
+    console.error("[getSurveyAuditLog]", err);
+  }
+  return [];
 }
 
