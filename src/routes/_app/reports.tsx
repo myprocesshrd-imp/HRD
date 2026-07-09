@@ -474,6 +474,7 @@ function ReportsPage() {
                         "text-[9px] uppercase tracking-wider px-1.5 py-0 shrink-0",
                         s.status === "Active" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
                         s.status === "Closed" ? "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400" :
+                        s.status === "Archived" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" :
                         "bg-amber-500/10 text-amber-600"
                       )}
                     >

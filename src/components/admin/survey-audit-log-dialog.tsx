@@ -6,6 +6,7 @@ import {
   Pencil,
   Trash2,
   Copy,
+  Archive,
   ChevronDown,
   Clock,
   AlertCircle,
@@ -31,7 +32,7 @@ const ACTION_META: Record<
   SurveyAuditLogEntry["action"],
   {
     icon: typeof History;
-    labelKey: "surveys.auditAction.create" | "surveys.auditAction.update" | "surveys.auditAction.delete" | "surveys.auditAction.clone";
+    labelKey: "surveys.auditAction.create" | "surveys.auditAction.update" | "surveys.auditAction.delete" | "surveys.auditAction.clone" | "surveys.auditAction.archive";
     color: string;
     dotColor: string;
     bgColor: string;
@@ -64,6 +65,13 @@ const ACTION_META: Record<
     color: "text-amber-600 dark:text-amber-400",
     dotColor: "bg-amber-500",
     bgColor: "bg-amber-50 dark:bg-amber-900/20",
+  },
+  archive: {
+    icon: Archive,
+    labelKey: "surveys.auditAction.archive",
+    color: "text-purple-600 dark:text-purple-400",
+    dotColor: "bg-purple-500",
+    bgColor: "bg-purple-50 dark:bg-purple-900/20",
   },
 };
 

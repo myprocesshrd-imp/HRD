@@ -2,7 +2,7 @@ export * from "./admin-helper";
 export * from "./departments";
 export * from "./business-units";
 export * from "./surveys";
-export { cloneSurvey } from "./surveys";
+export { cloneSurvey, archiveSurvey } from "./surveys";
 export * from "./questions";
 export * from "./users";
 export { setUserActive } from "./users";

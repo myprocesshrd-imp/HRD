@@ -27,7 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Plus, Pencil, Trash2, Eye, 
   Copy, ClipboardList, Send, Search, Settings2, ShieldCheck, Terminal, Users, Zap, Edit3, Binary, Layers, Info, CheckCircle2,
-  Globe, Activity, Filter, Database, Clock, Target, ArrowRight, ChevronDown, ChevronRight, UserPlus, History
+  Globe, Activity, Filter, Database, Clock, Target, ArrowRight, ChevronDown, ChevronRight, UserPlus, History, Archive
 } from "lucide-react";
 import { PreviewSurveyDialog } from "@/components/admin/preview-survey-dialog";
 import { toast } from "sonner";
@@ -114,6 +114,8 @@ function SurveysAdmin() {
   const [departmentsWithBu, setDepartmentsWithBu] = useState<Department[]>([]);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [sssMappings, setSssMappings] = useState<Map<string, SssQuestionMapping[]>>(new Map());
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
 
   const buildDefaultDemoFields = () => {
     const fields: Record<string, string[]> = {};
@@ -238,6 +240,22 @@ function SurveysAdmin() {
     }
   };
 
+  const handleArchive = async (id: string) => {
+    setSaving(true);
+    try {
+      const { archiveSurvey } = await import("@/services/api");
+      await archiveSurvey(id);
+      const updated = await getSurveys();
+      setSurveys(updated);
+      setArchiveTarget(null);
+      toast.success(t("surveys.archiveSuccess"));
+    } catch {
+      toast.error(t("surveys.archiveError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleClone = async (id: string) => {
     setSaving(true);
     try {
@@ -317,16 +335,18 @@ function SurveysAdmin() {
 
   const filteredSurveys = useMemo(() => {
     return surveys.filter(s => {
+      if (!showArchived && s.status === "Archived") return false;
       const q = searchQuery.toLowerCase();
       return !q || s.titleEn.toLowerCase().includes(q) || s.titleTh.toLowerCase().includes(q);
     });
-  }, [surveys, searchQuery]);
+  }, [surveys, searchQuery, showArchived]);
 
   const stats = useMemo(() => {
     const total = surveys.length;
     const active = surveys.filter(s => s.status === "Active").length;
+    const archived = surveys.filter(s => s.status === "Archived").length;
     const avgResponses = total > 0 ? Math.round(surveys.reduce((acc, s) => acc + (s.responses || 0), 0) / total) : 0;
-    return { total, active, avgResponses };
+    return { total, active, archived, avgResponses };
   }, [surveys]);
 
   const totalQuestions = useMemo(() => {
@@ -413,6 +433,11 @@ function SurveysAdmin() {
             disabled={!isAdmin}
             value={s.status}
             onValueChange={async (val) => {
+              if (val === "Archived") {
+                // intercept: show confirmation dialog instead of direct update
+                setArchiveTarget(s.id);
+                return;
+              }
               try {
                 await updateSurvey(s.id, { ...s, status: val as MockSurvey["status"] });
                 const updated = await getSurveys();
@@ -427,10 +452,16 @@ function SurveysAdmin() {
               "h-10 w-full rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm",
               s.status === "Active" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50" : 
               s.status === "Closed" ? "bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:bg-slate-500 border-slate-100 dark:border-slate-700" : 
+              s.status === "Archived" ? "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-800/50" :
               "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/50"
             )}>
               <div className="flex items-center gap-2.5">
-                <div className={cn("w-2.5 h-2.5 rounded-full", s.status === "Active" ? "bg-emerald-500 animate-pulse" : s.status === "Closed" ? "bg-slate-300 dark:bg-slate-600" : "bg-amber-500")} />
+                <div className={cn("w-2.5 h-2.5 rounded-full", 
+                  s.status === "Active" ? "bg-emerald-500 animate-pulse" : 
+                  s.status === "Closed" ? "bg-slate-300 dark:bg-slate-600" : 
+                  s.status === "Archived" ? "bg-purple-400" :
+                  "bg-amber-500"
+                )} />
                 <SelectValue />
               </div>
             </SelectTrigger>
@@ -438,6 +469,7 @@ function SurveysAdmin() {
               <SelectItem value="Draft" className="h-10 rounded-lg text-xs font-bold uppercase">{t("surveys.statusDraft")}</SelectItem>
               <SelectItem value="Active" className="h-10 rounded-lg text-xs font-bold uppercase">{t("surveys.statusActive")}</SelectItem>
               <SelectItem value="Closed" className="h-10 rounded-lg text-xs font-bold uppercase">{t("surveys.statusClosed")}</SelectItem>
+              <SelectItem value="Archived" className="h-10 rounded-lg text-xs font-bold uppercase text-purple-600">{t("surveys.statusArchived")}</SelectItem>
             </SelectContent>
           </Select>
         );
@@ -506,14 +538,6 @@ function SurveysAdmin() {
               disabled={!isAdmin || saving}
             >
               <Copy className="w-5 h-5" />
-            </Button>
-            <Button 
-              variant="outline" size="icon" 
-              className="h-10 w-10 rounded-xl border-slate-200 dark:border-slate-800 text-rose-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all shadow-sm bg-white dark:bg-slate-800"
-              disabled={!isAdmin}
-              onClick={() => setDeleteTarget(s.id)}
-            >
-              <Trash2 className="w-5 h-5" />
             </Button>
           </div>
         );
@@ -601,6 +625,7 @@ function SurveysAdmin() {
                                <SelectItem value="Active" className="text-xs font-semibold">{t("surveys.statusActive")}</SelectItem>
                                <SelectItem value="Closed" className="text-xs font-semibold">{t("surveys.statusClosed")}</SelectItem>
                                <SelectItem value="Draft" className="text-xs font-semibold">{t("surveys.statusDraft")}</SelectItem>
+                               <SelectItem value="Archived" className="text-xs font-semibold text-purple-600">{t("surveys.statusArchived")}</SelectItem>
                             </SelectContent>
                          </Select>
                        </div>
@@ -785,7 +810,7 @@ function SurveysAdmin() {
            { label: t("surveys.kpiCampaigns"), val: surveys.length, icon: ClipboardList, color: "text-slate-600", bg: "bg-slate-50" },
            { label: t("surveys.kpiActive"), val: surveys.filter(s => s.status === "Active").length, icon: Globe, color: "text-emerald-600", bg: "bg-emerald-50" },
            { label: t("surveys.kpiAvgResponse"), val: `${stats.avgResponses}`, icon: Activity, color: "text-indigo-600", bg: "bg-indigo-50" },
-           { label: t("surveys.kpiSecurity"), val: t("surveys.kpiVerified"), icon: Database, color: "text-blue-600", bg: "bg-blue-50" },
+           { label: t("surveys.statusArchived"), val: stats.archived, icon: Archive, color: "text-purple-600", bg: "bg-purple-50" },
          ].map(kpi => (
            <div key={kpi.label} className="flex items-center gap-5 p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm group hover:shadow-md transition-all">
               <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm", kpi.bg, kpi.color)}>
@@ -808,14 +833,34 @@ function SurveysAdmin() {
               </div>
               <h3 className="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white">{t("surveys.campaignRegistry")}</h3>
            </div>
-           <div className="relative flex-1 sm:w-96 max-w-md">
-              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t("surveys.searchPlaceholder")} 
-                className="h-11 pl-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[14px] shadow-none focus:ring-1 focus:ring-primary/10 transition-all" 
-              />
+           <div className="flex items-center gap-3">
+              <div className="relative flex-1 sm:w-96 max-w-md">
+                 <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                 <Input 
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   placeholder={t("surveys.searchPlaceholder")} 
+                   className="h-11 pl-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[14px] shadow-none focus:ring-1 focus:ring-primary/10 transition-all" 
+                 />
+              </div>
+              <button
+                onClick={() => setShowArchived(v => !v)}
+                className={cn(
+                  "flex items-center gap-2 h-11 px-4 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all shrink-0",
+                  showArchived
+                    ? "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/50 text-purple-600 dark:text-purple-400"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-purple-600 hover:border-purple-200"
+                )}
+              >
+                <Archive className="w-4 h-4" />
+                {showArchived ? t("surveys.hideArchived") : t("surveys.showArchived")}
+                {stats.archived > 0 && (
+                  <span className={cn(
+                    "inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold",
+                    showArchived ? "bg-purple-200 text-purple-700" : "bg-slate-100 text-slate-500"
+                  )}>{stats.archived}</span>
+                )}
+              </button>
            </div>
         </div>
         <CardContent className="p-0">
@@ -849,6 +894,30 @@ function SurveysAdmin() {
                 className="flex-1 h-8 rounded-lg bg-rose-600 text-white hover:bg-rose-700 font-bold text-[9px] uppercase tracking-wider shadow-lg shadow-rose-600/20"
               >
                 {t("surveys.deleteConfirmBtn")}
+              </AlertDialogAction>
+           </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Archive Confirm Dialog ── */}
+      <AlertDialog open={!!archiveTarget} onOpenChange={(o) => !o && setArchiveTarget(null)}>
+        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-5 text-center flex flex-col items-center gap-4 max-w-[340px] bg-white dark:bg-slate-900">
+           <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-inner">
+              <Archive className="w-6 h-6" />
+           </div>
+           <div className="space-y-1">
+              <AlertDialogTitle className="text-base font-bold tracking-tight">{t("surveys.archiveConfirmTitle")}</AlertDialogTitle>
+              <AlertDialogDescription className="text-[11px] text-slate-500 leading-relaxed">
+                 {t("surveys.archiveConfirmDesc")}
+              </AlertDialogDescription>
+           </div>
+           <div className="flex gap-2 w-full pt-2">
+              <AlertDialogCancel className="flex-1 h-8 rounded-lg font-bold text-[9px] uppercase tracking-wider border-slate-200">{t("surveys.deleteAbort")}</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => archiveTarget && handleArchive(archiveTarget)} 
+                className="flex-1 h-8 rounded-lg bg-purple-600 text-white hover:bg-purple-700 font-bold text-[9px] uppercase tracking-wider shadow-lg shadow-purple-600/20"
+              >
+                {t("surveys.statusArchived")}
               </AlertDialogAction>
            </div>
         </AlertDialogContent>

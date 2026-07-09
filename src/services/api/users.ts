@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { invokeAdminService } from "./admin-helper";
 import { MOCK_USERS as MOCK_USERS_DATA, type MockUser, type Role } from "@/lib/mock-data";
 
@@ -174,6 +174,20 @@ export async function createUser(data: {
   level: string;
   location: string;
 }): Promise<string> {
+  let departmentId: string | null = null;
+  if (data.department) {
+    try {
+      const { data: deptData } = await supabase
+        .from("departments")
+        .select("id")
+        .eq("name_en", data.department)
+        .maybeSingle();
+      if (deptData) {
+        departmentId = deptData.id;
+      }
+    } catch {}
+  }
+
   const result = await invokeAdminService("USER_UPSERT_BULK", {
     users: [{
       employee_code: data.employeeCode,
@@ -181,6 +195,7 @@ export async function createUser(data: {
       name_th: data.nameTh,
       name_en: data.nameEn,
       role: data.role,
+      department_id: departmentId,
       business_unit: data.businessUnit || null,
       level: data.level || null,
       location: data.location || null,
@@ -200,6 +215,20 @@ export async function updateUser(id: string, data: {
   level: string;
   location: string;
 }): Promise<void> {
+  let departmentId: string | null = null;
+  if (data.department) {
+    try {
+      const { data: deptData } = await supabase
+        .from("departments")
+        .select("id")
+        .eq("name_en", data.department)
+        .maybeSingle();
+      if (deptData) {
+        departmentId = deptData.id;
+      }
+    } catch {}
+  }
+
   await invokeAdminService("USER_UPSERT_BULK", {
     users: [{
       id,
@@ -208,6 +237,7 @@ export async function updateUser(id: string, data: {
       name_th: data.nameTh,
       name_en: data.nameEn,
       role: data.role,
+      department_id: departmentId,
       business_unit: data.businessUnit || null,
       level: data.level || null,
       location: data.location || null,

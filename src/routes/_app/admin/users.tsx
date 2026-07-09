@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
-import { getUsers, createUser, updateUser, getDepartments, setUserActive } from "@/services/api";
+import { getUsers, createUser, updateUser, getDepartments, setUserActive, getDemographicsConstants } from "@/services/api";
+import { getHRMSProfile } from "@/services/hrms.service";
 import type { MockUser, Role } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,8 @@ function UsersAdmin() {
   const { lang } = useI18n();
   const [users, setUsers] = useState<MockUser[]>([]);
   const [depts, setDepts] = useState<string[]>([]);
+  const [levelOptions, setLevelOptions] = useState<string[]>([]);
+  const [locationOptions, setLocationOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -49,13 +52,63 @@ function UsersAdmin() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterRole, setFilterRole] = useState<"all" | Role>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [pullingHrms, setPullingHrms] = useState(false);
 
   useEffect(() => {
-    Promise.all([getUsers(), getDepartments()]).then(([u, d]) => {
+    Promise.all([
+      getUsers(),
+      getDepartments(),
+      getDemographicsConstants()
+    ]).then(([u, d, c]) => {
       setUsers(u);
       setDepts(d);
+      setLevelOptions(c.levels);
+      setLocationOptions(c.locations);
     }).finally(() => setLoading(false));
   }, []);
+
+  const handlePullFromHRMS = async () => {
+    if (!editing || !editing.employeeCode) {
+      toast.error(lang === "th" ? "กรุณากรอกรหัสพนักงานก่อนดึงข้อมูล" : "Please enter employee code first");
+      return;
+    }
+    setPullingHrms(true);
+    try {
+      const profile = await getHRMSProfile(editing.employeeCode);
+      if (profile) {
+        const matchedLevel = levelOptions.find(
+          (l) => l.toLowerCase() === profile.level.toLowerCase()
+        ) || levelOptions.find(
+          (l) => l.toLowerCase().includes(profile.level.toLowerCase()) || profile.level.toLowerCase().includes(l.toLowerCase())
+        ) || profile.level;
+
+        const matchedLocation = locationOptions.find(
+          (l) => l.toLowerCase() === profile.location.toLowerCase()
+        ) || locationOptions.find(
+          (l) => l.toLowerCase().includes(profile.location.toLowerCase()) || profile.location.toLowerCase().includes(l.toLowerCase())
+        ) || profile.location;
+
+        setEditing((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            nameTh: profile.nameTh || prev.nameTh,
+            nameEn: profile.nameEn || prev.nameEn,
+            email: profile.email || prev.email,
+            department: profile.department || prev.department,
+            businessUnit: profile.businessUnit || prev.businessUnit,
+            level: matchedLevel || prev.level,
+            location: matchedLocation || prev.location,
+          };
+        });
+        toast.success(lang === "th" ? "ดึงข้อมูลจาก HRMS และจับคู่ข้อมูลตรงกันเรียบร้อยแล้ว" : "HRMS profile loaded and options matched successfully");
+      }
+    } catch {
+      toast.error(lang === "th" ? "ไม่พบรหัสพนักงานนี้ในระบบ HRMS หรือเกิดข้อผิดพลาดในการดึงข้อมูล" : "Employee ID not found in HRMS");
+    } finally {
+      setPullingHrms(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!editing) return;
@@ -119,7 +172,7 @@ function UsersAdmin() {
       key: "nameEn",
       header: <span className="text-slate-900 dark:text-white">{lang === "th" ? "พนักงาน" : "Personnel Identity"}</span>,
       sortable: true,
-      className: "min-w-[280px]",
+      className: "w-[30%] min-w-[280px]",
       render: (u: MockUser) => (
         <div className="flex items-center gap-4 py-2 group/item">
           <div className={cn(
@@ -152,9 +205,9 @@ function UsersAdmin() {
     },
     {
       key: "role",
-      header: <span className="text-slate-900 dark:text-white">Authority</span>,
+      header: <span className="text-slate-900 dark:text-white">{lang === "th" ? "สิทธิ์การใช้งาน" : "Authority"}</span>,
       sortable: true,
-      className: "w-[130px]",
+      className: "w-[180px]",
       render: (u: MockUser) => {
         const config = ROLE_CONFIG[u.role];
         return (
@@ -171,20 +224,26 @@ function UsersAdmin() {
     },
     {
       key: "department",
-      header: <span className="text-slate-900 dark:text-white">Structure</span>,
+      header: <span className="text-slate-900 dark:text-white">{lang === "th" ? "ตำแหน่งงาน" : "Department"}</span>,
       sortable: true,
-      className: "hidden md:table-cell w-[160px]",
+      className: "hidden md:table-cell w-[180px]",
       render: (u: MockUser) => (
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{u.department}</span>
-          <span className="text-[11px] font-bold uppercase text-slate-400 tracking-tight">{u.location}</span>
-        </div>
+        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{u.department || "-"}</span>
+      ),
+    },
+    {
+      key: "location",
+      header: <span className="text-slate-900 dark:text-white">SITE</span>,
+      sortable: true,
+      className: "hidden md:table-cell w-[120px]",
+      render: (u: MockUser) => (
+        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{u.location || "-"}</span>
       ),
     },
     {
       key: "isActive",
-      header: <span className="text-slate-900 dark:text-white">Status</span>,
-      className: "w-[110px]",
+      header: <span className="text-slate-900 dark:text-white">{lang === "th" ? "สถานะ" : "Status"}</span>,
+      className: "w-[130px]",
       render: (u: MockUser) => {
         const active = u.isActive !== false;
         return (
@@ -241,7 +300,9 @@ function UsersAdmin() {
       {/* ── Compact Header ── */}
       <div className="flex items-center justify-between gap-6 pb-2">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Users</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {lang === "th" ? "จัดการผู้ใช้งาน" : "Users"}
+          </h1>
           <p className="text-sm font-medium text-slate-400">
             {lang === "th" ? "จัดการข้อมูลบุคลากรและสิทธิ์การใช้งาน" : "Manage personnel registry and access levels."}
           </p>
@@ -255,11 +316,11 @@ function UsersAdmin() {
             setEditing({
               id: "", employeeCode: "", email: "", password: "", nameTh: "", nameEn: "",
               role: "employee", department: depts[0] || "", businessUnit: "BU A", 
-              level: LEVELS[0] || "", location: LOCATIONS[0] || "", avatarUrl: "", isActive: true,
+              level: levelOptions[0] || LEVELS[0] || "", location: locationOptions[0] || LOCATIONS[0] || "", avatarUrl: "", isActive: true,
             });
             setDialogOpen(true);
           }} className="h-10 px-6 rounded-xl bg-slate-900 dark:bg-primary text-white font-bold text-[11px] uppercase tracking-wider shadow-lg shadow-slate-900/10 dark:shadow-primary/10">
-            <Plus className="w-4.5 h-4.5 mr-2" /> Provision User
+            <Plus className="w-4.5 h-4.5 mr-2" /> {lang === "th" ? "เพิ่มผู้ใช้งาน" : "Provision User"}
           </Button>
         </div>
       </div>
@@ -267,10 +328,10 @@ function UsersAdmin() {
       {/* ── Status Strip ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Identity", val: stats.total, icon: Fingerprint, color: "text-slate-600 dark:text-slate-300", bg: "bg-slate-50 dark:bg-slate-800/50" },
-          { label: "Active Access", val: stats.active, icon: Activity, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
-          { label: "Commanders", val: (stats.roles.super_admin ?? 0) + (stats.roles.hr_admin ?? 0), icon: Shield, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
-          { label: "Suspended", val: stats.inactive, icon: Clock, color: "text-rose-500 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-900/20" },
+          { label: lang === "th" ? "ผู้ใช้งานทั้งหมด" : "Total Identity", val: stats.total, icon: Fingerprint, color: "text-slate-600 dark:text-slate-300", bg: "bg-slate-50 dark:bg-slate-800/50" },
+          { label: lang === "th" ? "บัญชีที่ใช้งานอยู่" : "Active Access", val: stats.active, icon: Activity, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+          { label: lang === "th" ? "ผู้ดูแลระบบ" : "Commanders", val: (stats.roles.super_admin ?? 0) + (stats.roles.hr_admin ?? 0), icon: Shield, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+          { label: lang === "th" ? "ระงับการใช้งาน" : "Suspended", val: stats.inactive, icon: Clock, color: "text-rose-500 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-900/20" },
         ].map(kpi => (
           <div key={kpi.label} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
             <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm", kpi.bg, kpi.color)}>
@@ -295,7 +356,7 @@ function UsersAdmin() {
                   ? "bg-slate-900 dark:bg-primary text-white border-slate-900 dark:border-primary shadow-lg shadow-primary/20" 
                   : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
               )}>
-                {r === "all" ? "All Users" : r.replace("_", " ")}
+                {r === "all" ? (lang === "th" ? "ผู้ใช้งานทั้งหมด" : "All Users") : (lang === "th" ? ROLE_CONFIG[r].labelTh : r.replace("_", " "))}
                 <span className={cn(
                   "ml-2 px-1.5 rounded-md text-[9px]", 
                   filterRole === r ? "bg-white/20 text-white" : "bg-slate-50 dark:bg-slate-900/50 text-slate-400"
@@ -314,7 +375,7 @@ function UsersAdmin() {
               <Input 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filter registry..." 
+                placeholder={lang === "th" ? "ค้นหาข้อมูลผู้ใช้งาน..." : "Filter registry..."} 
                 className="h-9 pl-10 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-xs shadow-none focus:ring-1 focus:ring-primary/10 transition-all" 
               />
             </div>
@@ -342,9 +403,13 @@ function UsersAdmin() {
                   </div>
                   <div>
                     <DialogTitle className="text-lg font-bold">
-                       {editing?.id ? "Modify Identity" : "Provision New Identity"}
+                       {editing?.id 
+                         ? (lang === "th" ? "แก้ไขข้อมูลผู้ใช้งาน" : "Modify Identity") 
+                         : (lang === "th" ? "เพิ่มผู้ใช้งานใหม่" : "Provision New Identity")}
                     </DialogTitle>
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Registry Protocol v2.4</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                      {lang === "th" ? "ข้อมูลระบุตัวตนและสิทธิ์ผู้ใช้งาน" : "Registry Protocol v2.4"}
+                    </span>
                   </div>
                </div>
             </DialogHeader>
@@ -354,44 +419,80 @@ function UsersAdmin() {
                 <div className="p-5 space-y-5 bg-white dark:bg-slate-900">
                   {/* Basic Matrix */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Employee Code</Label>
-                      <Input value={editing.employeeCode} onChange={(e) => setEditing({...editing, employeeCode: e.target.value})} className="h-9 rounded-lg border-slate-200 font-bold text-xs" placeholder="E-XXXXXX" />
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "รหัสพนักงาน" : "Employee Code"}
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input value={editing.employeeCode} onChange={(e) => setEditing({...editing, employeeCode: e.target.value})} className="h-9 rounded-lg border-slate-200 font-bold text-xs" placeholder="E-XXXXXX" />
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 font-semibold text-xs whitespace-nowrap" 
+                          onClick={handlePullFromHRMS}
+                          disabled={pullingHrms}
+                        >
+                          {pullingHrms ? (
+                            <div className="w-3.5 h-3.5 rounded-full border border-slate-300 border-t-primary animate-spin" />
+                          ) : (
+                            lang === "th" ? "ดึงข้อมูล HRMS" : "Pull HRMS"
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Address</Label>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "อีเมล" : "Email Address"}
+                      </Label>
                       <Input value={editing.email} onChange={(e) => setEditing({...editing, email: e.target.value})} className="h-9 rounded-lg border-slate-200 font-bold text-xs" placeholder="identity@enterprise.com" />
                     </div>
                   </div>
 
                   {/* Names */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Name (Thai)</Label>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "ชื่อ-นามสกุล (ภาษาไทย)" : "Name (Thai)"}
+                      </Label>
                       <Input value={editing.nameTh} onChange={(e) => setEditing({...editing, nameTh: e.target.value})} className="h-9 rounded-lg border-slate-200 font-bold text-xs" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Name (English)</Label>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "ชื่อ-นามสกุล (ภาษาอังกฤษ)" : "Name (English)"}
+                      </Label>
                       <Input value={editing.nameEn} onChange={(e) => setEditing({...editing, nameEn: e.target.value})} className="h-9 rounded-lg border-slate-200 font-bold text-xs" />
                     </div>
                   </div>
 
                   {/* Role & Dept */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Authority Role</Label>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "ระดับสิทธิ์การเข้าใช้งาน" : "Authority Role"}
+                      </Label>
                       <Select value={editing.role} onValueChange={(v) => setEditing({...editing, role: v as any})}>
                         <SelectTrigger className="h-9 rounded-lg border-slate-200 font-bold text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-lg max-h-[200px] overflow-y-auto">
-                          <SelectItem value="employee" className="text-xs font-semibold">Employee (Standard)</SelectItem>
-                          <SelectItem value="manager" className="text-xs font-semibold">Manager</SelectItem>
-                          <SelectItem value="hr_admin" className="text-xs font-semibold">HR Admin</SelectItem>
-                          <SelectItem value="super_admin" className="text-xs font-semibold">Super Admin</SelectItem>
+                          <SelectItem value="employee" className="text-xs font-semibold">
+                            {lang === "th" ? "พนักงานทั่วไป" : "Employee (Standard)"}
+                          </SelectItem>
+                          <SelectItem value="manager" className="text-xs font-semibold">
+                            {lang === "th" ? "หัวหน้างาน / ผู้จัดการ" : "Manager"}
+                          </SelectItem>
+                          <SelectItem value="hr_admin" className="text-xs font-semibold">
+                            {lang === "th" ? "ผู้ดูแลระบบฝ่ายบุคคล (HR)" : "HR Admin"}
+                          </SelectItem>
+                          <SelectItem value="super_admin" className="text-xs font-semibold">
+                            {lang === "th" ? "ผู้ดูแลระบบสูงสุด (Super Admin)" : "Super Admin"}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Department</Label>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "ฝ่าย / แผนก" : "Department"}
+                      </Label>
                       <Select value={editing.department} onValueChange={(v) => setEditing({...editing, department: v})}>
                         <SelectTrigger className="h-9 rounded-lg border-slate-200 font-bold text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-lg max-h-[200px] overflow-y-auto">
@@ -403,21 +504,29 @@ function UsersAdmin() {
 
                   {/* Level & Location */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Personnel Level</Label>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "ระดับปฏิบัติการ" : "Personnel Level"}
+                      </Label>
                       <Select value={editing.level} onValueChange={(v) => setEditing({...editing, level: v})}>
                         <SelectTrigger className="h-9 rounded-lg border-slate-200 font-bold text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-lg max-h-[200px] overflow-y-auto">
-                          {LEVELS.map(l => <SelectItem key={l} value={l} className="text-xs font-semibold">{l}</SelectItem>)}
+                          {(levelOptions.length > 0 ? levelOptions : LEVELS).map(l => (
+                            <SelectItem key={l} value={l} className="text-xs font-semibold">{l}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Work Location</Label>
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-1">
+                        {lang === "th" ? "Site" : "Work Location"}
+                      </Label>
                       <Select value={editing.location} onValueChange={(v) => setEditing({...editing, location: v})}>
                         <SelectTrigger className="h-9 rounded-lg border-slate-200 font-bold text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-lg max-h-[200px] overflow-y-auto">
-                          {LOCATIONS.map(l => <SelectItem key={l} value={l} className="text-xs font-semibold">{l}</SelectItem>)}
+                          {(locationOptions.length > 0 ? locationOptions : LOCATIONS).map(l => (
+                            <SelectItem key={l} value={l} className="text-xs font-semibold">{l}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -427,9 +536,11 @@ function UsersAdmin() {
             )}
 
             <DialogFooter className="p-4 px-6 bg-slate-50 dark:bg-slate-800/50 border-t dark:border-slate-800 flex justify-end gap-3">
-               <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="px-5 h-9 rounded-xl font-bold text-[11px] text-slate-400 uppercase">Cancel</Button>
+               <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="px-5 h-9 rounded-xl font-bold text-[11px] text-slate-400 uppercase">
+                 {lang === "th" ? "ยกเลิก" : "Cancel"}
+               </Button>
                <Button onClick={handleSave} disabled={saving} className="px-8 h-9 rounded-xl bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider">
-                  {saving ? "Saving..." : "Finalize Identity"}
+                  {saving ? (lang === "th" ? "กำลังบันทึก..." : "Saving...") : (lang === "th" ? "บันทึกข้อมูล" : "Finalize Identity")}
                </Button>
             </DialogFooter>
          </DialogContent>

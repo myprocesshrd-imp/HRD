@@ -630,7 +630,7 @@ export interface MockSurvey {
   id: string;
   titleEn: string;
   titleTh: string;
-  status: "Active" | "Closed" | "Draft";
+  status: "Active" | "Closed" | "Draft" | "Archived";
   surveyType: "anonymous" | "identified";
   startDate: string;
   endDate: string;
@@ -652,7 +652,7 @@ export interface MockSurvey {
 export interface SurveyAuditLogEntry {
   id: string;
   surveyId: string;
-  action: "create" | "update" | "delete" | "clone";
+  action: "create" | "update" | "delete" | "clone" | "archive";
   actorNameEn?: string;
   actorNameTh?: string;
   actorEmployeeCode?: string;

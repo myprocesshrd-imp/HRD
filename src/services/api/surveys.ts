@@ -3,7 +3,7 @@ import { invokeAdminService } from "./admin-helper";
 import type { MockSurvey, SurveySection, SurveyAuditLogEntry } from "@/lib/mock-data";
 
 export type { MockSurvey, SurveySection, SurveyAuditLogEntry };
-export type SurveyStatus = "Active" | "Closed" | "Draft";
+export type SurveyStatus = "Active" | "Closed" | "Draft" | "Archived";
 
 interface SupabaseSurvey {
   id: string;
@@ -395,6 +395,18 @@ export async function deleteSurvey(id: string): Promise<void> {
       : null,
   });
   await invokeAdminService("SURVEY_DELETE", { id });
+}
+
+export async function archiveSurvey(id: string): Promise<void> {
+  const before = await fetchSurveyDbSnapshot(id);
+  const afterFields = toDbSurveyFields({ status: "Archived" });
+  await invokeAdminService("SURVEY_UPDATE", { id, status: "archived" });
+  if (before) {
+    const changes = computeSurveyChanges(before as Record<string, unknown>, afterFields);
+    if (Object.keys(changes).length > 0) {
+      await writeSurveyAuditLog(id, "archive", changes);
+    }
+  }
 }
 
 export async function cloneSurvey(id: string): Promise<string> {

@@ -97,7 +97,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
   useEffect(() => {
     const saved = loadDraft(surveyId, user?.id);
     if (saved) {
-      setDraft({ surveyId, anonymous: survey.surveyType === "anonymous" || saved.anonymous, profile: saved.profile ?? {}, answers: saved.answers, feedback: saved.feedback, startedAt: saved.startedAt });
+      setDraft({ surveyId, anonymous: survey.surveyType === "anonymous", profile: saved.profile ?? {}, answers: saved.answers, feedback: saved.feedback, startedAt: saved.startedAt });
     }
     if (user && survey.surveyType !== "anonymous" && !draft.anonymous) {
       getHRMSProfile(user.id)
@@ -340,7 +340,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
             <Button variant="outline" className="h-10 rounded-xl border-slate-200 font-bold uppercase tracking-wider text-[10px] hover:bg-slate-50 transition-all" onClick={onBack}>
               {lang === "th" ? "กลับสู่รายการ" : "Back to List"}
             </Button>
-            <Button className="h-10 rounded-xl shadow-lg shadow-primary/20 font-bold uppercase tracking-wider text-[10px]" onClick={() => { setDraft({ surveyId, anonymous: false, profile: {}, answers: {}, feedback: {}, startedAt: Date.now() }); setStep(0); }}>
+            <Button className="h-10 rounded-xl shadow-lg shadow-primary/20 font-bold uppercase tracking-wider text-[10px]" onClick={() => { setDraft({ surveyId, anonymous: survey.surveyType === "anonymous", profile: {}, answers: {}, feedback: {}, startedAt: Date.now() }); setStep(0); }}>
               {lang === "th" ? "ทำแบบสำรวจอีกครั้ง" : "Take Another Survey"}
             </Button>
           </div>
@@ -447,42 +447,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
               ))}
             </div>
 
-            <Separator className="bg-slate-100" />
 
-            {! (survey.surveyType === "anonymous") && (
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4 opacity-5">
-                  <Fingerprint className="w-16 h-16 text-primary" />
-               </div>
-              <div className="flex items-center gap-4 relative">
-                <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center text-primary shadow-sm border border-slate-200 dark:border-slate-700">
-                  <Globe className={cn("w-5 h-5 transition-all duration-1000", draft.anonymous ? "animate-spin text-indigo-600" : "")} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-base tracking-tight text-slate-900 dark:text-white">{lang === "th" ? "ตอบแบบไม่ระบุตัวตน" : "Anonymous Mode"}</h4>
-                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 max-w-sm">
-                    {lang === "th" ? "ระบบจะไม่บันทึกข้อมูลที่ระบุตัวตนของคุณ" : "Enable to fully mask your identity node."}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-lg shadow-sm border border-slate-200 relative">
-                <Label htmlFor="anonymous" className="text-[9px] font-bold uppercase tracking-wider text-slate-400 cursor-pointer">
-                  {lang === "th" ? "เปิดใช้งาน" : "Enabled"}
-                </Label>
-                <Switch
-                  id="anonymous"
-                  checked={draft.anonymous}
-                  onCheckedChange={(v) => {
-                    setDraft((d) => ({ ...d, anonymous: !!v }));
-                    if (v) toast.info(lang === "th" ? "เปิดใช้งานการตอบแบบไม่ระบุตัวตน" : "Anonymous Mode Enabled");
-                    else toast.info(lang === "th" ? "กลับสู่การตอบแบบระบุตัวตน" : "Identified Mode Restored");
-                  }}
-                  className="data-[state=checked]:bg-indigo-600 scale-90"
-                />
-              </div>
-            </div>
-            )}
-            
             {user && !draft.anonymous && (
               <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 animate-in fade-in duration-1000 uppercase tracking-widest">
                 <UserCircle2 className="w-3.5 h-3.5 text-primary" />
@@ -509,11 +474,12 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
               <div className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                   {[
-                    { icon: UserCircle2, label: lang === "th" ? "ชื่อผู้ใช้งาน" : "Identity", value: lang === "th" ? hrmsProfile.nameTh : hrmsProfile.nameEn, color: "text-blue-600" },
-                    { icon: Building2, label: t("common.department"), value: hrmsProfile.department, color: "text-indigo-600" },
-                    { icon: Briefcase, label: t("common.level"), value: hrmsProfile.level, color: "text-emerald-600" },
-                    { icon: MapPin, label: t("common.location"), value: hrmsProfile.location, color: "text-amber-600" },
-                  ].map((f) => (
+                    { icon: UserCircle2, label: "ชื่อ-นามสกุล", value: lang === "th" ? hrmsProfile.nameTh : hrmsProfile.nameEn, color: "text-blue-600" },
+                    { icon: Globe, label: "หน่วยงานสังกัด", value: hrmsProfile.businessUnit, color: "text-violet-600" },
+                    { icon: Building2, label: "ฝ่าย / แผนก", value: hrmsProfile.department, color: "text-indigo-600" },
+                    { icon: Briefcase, label: "ระดับตำแหน่ง", value: hrmsProfile.level, color: "text-emerald-600" },
+                    { icon: MapPin, label: "สถานที่ปฏิบัติงาน", value: hrmsProfile.location, color: "text-amber-600" },
+                  ].filter((f) => !!f.value).map((f) => (
                     <div key={f.label} className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-4 group/item hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all shadow-sm">
                       <div className={cn("w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-900 flex items-center justify-center border border-slate-100 dark:border-slate-800 shrink-0", f.color)}>
                         <f.icon className="w-5 h-5" />
