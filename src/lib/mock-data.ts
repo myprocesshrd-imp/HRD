@@ -19,12 +19,7 @@ export interface MockUser {
   lastLoginAt?: string;
 }
 
-export const MOCK_USERS: MockUser[] = [
-  { id: "u1", employeeCode: "admin", email: "admin@company.co.th", password: "admin123", nameTh: "สมชาย ใจดี", nameEn: "Somchai Jaidee", role: "super_admin", department: "IT", businessUnit: "Corporate", level: "Executive", location: "Head Office", avatarUrl: "" },
-  { id: "u2", employeeCode: "hr", email: "hr@company.co.th", password: "hr123", nameTh: "อารยา ทรัพย์มั่น", nameEn: "Araya Sapman", role: "hr_admin", department: "Human Resources", businessUnit: "Corporate", level: "Manager", location: "Head Office", avatarUrl: "" },
-  { id: "u3", employeeCode: "manager", email: "manager@company.co.th", password: "manager123", nameTh: "ธนพล ก้าวหน้า", nameEn: "Thanaphol Kaona", role: "manager", department: "Sales", businessUnit: "Commercial", level: "Senior Manager", location: "Head Office", avatarUrl: "" },
-  { id: "u4", employeeCode: "employee", email: "employee@company.co.th", password: "employee123", nameTh: "พิมพ์ชนก สดใส", nameEn: "Pimchanok Sodsai", role: "employee", department: "Marketing", businessUnit: "Commercial", level: "Operational Level", location: "Head Office", avatarUrl: "" },
-];
+export const MOCK_USERS: MockUser[] = [];
 
 // ── Bulletin Board types ──
 export type BulletinCategory = "general" | "hr" | "it" | "event" | "policy" | "safety";

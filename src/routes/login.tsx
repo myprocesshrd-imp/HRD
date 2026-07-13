@@ -22,13 +22,6 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-const DEMO = [
-  { role: "Super Admin", code: "admin", password: "admin123", color: "bg-rose-500/10 text-rose-600" },
-  { role: "HR Admin", code: "hr", password: "hr123", color: "bg-indigo-500/10 text-indigo-600" },
-  { role: "Manager", code: "manager", password: "manager123", color: "bg-emerald-500/10 text-emerald-600" },
-  { role: "Employee", code: "employee", password: "employee123", color: "bg-amber-500/10 text-amber-600" },
-];
-
 function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const { t, lang, setLang } = useI18n();
@@ -41,7 +34,6 @@ function LoginPage() {
   const [showDebug, setShowDebug] = useState(false);
   const [anonSurveys, setAnonSurveys] = useState<MockSurvey[]>([]);
   const [surveysLoading, setSurveysLoading] = useState(true);
-  const [showDemo, setShowDemo] = useState(false);
 
   const [hydrated, setHydrated] = useState(false);
 
@@ -81,12 +73,6 @@ function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemo = (code: string, p: string) => {
-    setEmployeeCode(code);
-    setPassword(p);
-    toast.info("Demo credentials applied");
   };
 
   return (
@@ -225,42 +211,6 @@ function LoginPage() {
             </Button>
           </form>
 
-          {/* Quick Demo Access */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setShowDemo((v) => !v)}
-              className="w-full flex items-center gap-3 px-1 group"
-            >
-              <div className="h-px flex-1 bg-slate-100" />
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-600 transition-colors whitespace-nowrap">
-                {t("auth.demoTitle")}
-                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", showDemo && "rotate-180")} />
-              </span>
-              <div className="h-px flex-1 bg-slate-100" />
-            </button>
-
-            {showDemo && (
-              <div className="grid grid-cols-2 gap-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                {DEMO.map((d) => (
-                  <button
-                    key={d.code}
-                    type="button"
-                    onClick={() => fillDemo(d.code, d.password)}
-                    className="flex flex-col items-start p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/20 dark:hover:border-primary/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-left group"
-                  >
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2", d.color)}>
-                      {d.role}
-                    </span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center justify-between w-full">
-                      {d.code}
-                      <ArrowRight className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover:text-primary transition-colors" />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Anonymous surveys */}
           {!surveysLoading && anonSurveys.length > 0 && (

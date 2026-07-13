@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getSurveySections, getSurvey, OPEN_FEEDBACK, submitSurveyResponse, getDemographicsConstants, getDepartmentsWithId, getBusinessUnits } from "@/services/api";
+import { getDemographicOptions, type DemographicOption } from "@/services/api/demographic-options";
 import type { SurveySection, MockSurvey, Department, BusinessUnit } from "@/services/api";
 import { DEMOGRAPHIC_FIELDS_REGISTRY } from "@/lib/mock-data";
 import { QuestionRenderer } from "@/components/survey/question-renderer";
@@ -47,6 +48,7 @@ function AnonymousSurveyPage() {
   const [pageKey, setPageKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [demoConstants, setDemoConstants] = useState<Record<string, string[]>>({});
+  const [dbDemoOptions, setDbDemoOptions] = useState<DemographicOption[]>([]);
   const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [allBusinessUnits, setAllBusinessUnits] = useState<BusinessUnit[]>([]);
   const [depSearch, setDepSearch] = useState("");
@@ -64,7 +66,8 @@ function AnonymousSurveyPage() {
       getDemographicsConstants(),
       getDepartmentsWithId(),
       getBusinessUnits(),
-    ]).then(([c, depts, bus]) => {
+      getDemographicOptions(),
+    ]).then(([c, depts, bus, dbOpts]) => {
       setDemoConstants({
         department: c.departments,
         businessUnit: c.businessUnits,
@@ -76,6 +79,7 @@ function AnonymousSurveyPage() {
       });
       setAllDepartments(depts);
       setAllBusinessUnits(bus as BusinessUnit[]);
+      setDbDemoOptions(dbOpts);
     });
   }, []);
 
@@ -206,6 +210,52 @@ function AnonymousSurveyPage() {
   }, [survey, demoConstants, draft.profile, buNameToId, allDepartments, lang]);
 
   const demographicsComplete = activeDemoFields.every((f: any) => (draft.profile[f.key] ?? "").length > 0);
+
+  const getOptionLabel = (fieldKey: string, optionValue: string) => {
+    const dbOpt = dbDemoOptions.find(
+      (opt) =>
+        (opt.field_key === fieldKey ||
+         opt.field_key === fieldKey + "s" ||
+         (fieldKey === "ageRange" && opt.field_key === "ageRanges")) &&
+        (opt.value === optionValue || opt.label_en === optionValue)
+    );
+    if (lang === "th" && dbOpt) {
+      return dbOpt.label_th;
+    }
+    if (lang === "th") {
+      const fallbackMap: Record<string, string> = {
+        "Male": "ชาย",
+        "Female": "หญิง",
+        "LGBTQ+": "LGBTQ+",
+        "Prefer not to say": "ไม่ต้องการระบุ",
+        "Under 20": "ต่ำกว่า 20 ปี",
+        "21-25": "21-25 ปี",
+        "26-30": "26-30 ปี",
+        "31-35": "31-35 ปี",
+        "36-40": "36-40 ปี",
+        "41-50": "41-50 ปี",
+        "Over 50": "มากกว่า 50 ปี",
+        "Less than 1 year": "น้อยกว่า 1 ปี",
+        "1-3 years": "1-3 ปี",
+        "4-6 years": "4-6 ปี",
+        "7-10 years": "7-10 ปี",
+        "More than 10 years": "มากกว่า 10 ปี",
+        "Head Office": "สำนักงานใหญ่",
+        "Factory": "โรงงาน",
+        "Warehouse": "คลังสินค้า",
+        "Branch Office": "สาขา",
+        "Remote Work": "ทำงานทางไกล (Remote)",
+        "Operational Level": "ระดับปฏิบัติการ",
+        "Supervisor": "หัวหน้างาน",
+        "Assistant Manager": "ผู้ช่วยผู้จัดการ",
+        "Manager": "ผู้จัดการ",
+        "Senior Manager": "ผู้จัดการอาวุโส",
+        "Executive": "ผู้บริหาร",
+      };
+      return fallbackMap[optionValue] || optionValue;
+    }
+    return optionValue;
+  };
 
   const goNext = () => { setPageKey((k) => k + 1); setStep((s) => Math.min(totalSteps, s + 1)); };
   const goBack = () => { setPageKey((k) => k + 1); setStep((s) => Math.max(0, s - 1)); };
@@ -472,7 +522,7 @@ function AnonymousSurveyPage() {
                           )}
                           {(f.key === "department" ? f.options.filter((o: string) => o.toLowerCase().includes(depSearch.toLowerCase())) : f.options).map((o: string) => (
                             <SelectItem key={o} value={o} className="h-10 rounded-lg font-medium focus:bg-primary/5 focus:text-primary transition-colors cursor-pointer px-4 whitespace-normal break-words">
-                              {o}
+                              {getOptionLabel(f.key, o)}
                             </SelectItem>
                           ))}
                         </SelectContent>
