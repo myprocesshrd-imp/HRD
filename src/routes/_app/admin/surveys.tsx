@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { getSurveys, getQuestionBank, createSurvey, updateSurvey, deleteSurvey, cloneSurvey, getDemographicsConstants } from "@/services/api";
+import { getDemographicOptions, type DemographicOption } from "@/services/api/demographic-options";
 import { SurveyAuditLogDialog } from "@/components/admin/survey-audit-log-dialog";
 import type { MockSurvey } from "@/services/api";
 import type { SurveySection } from "@/services/api";
@@ -116,6 +117,7 @@ function SurveysAdmin() {
   const [sssMappings, setSssMappings] = useState<Map<string, SssQuestionMapping[]>>(new Map());
   const [showArchived, setShowArchived] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
+  const [dbDemoOptions, setDbDemoOptions] = useState<DemographicOption[]>([]);
 
   const buildDefaultDemoFields = () => {
     const fields: Record<string, string[]> = {};
@@ -148,6 +150,18 @@ function SurveysAdmin() {
     return map;
   }, [departmentsWithBu]);
 
+  const getOptionLabel = (fieldKey: string, optionValue: string) => {
+    const dbOpt = dbDemoOptions.find(
+      (opt) =>
+        (opt.field_key === fieldKey ||
+          opt.field_key === fieldKey + "s" ||
+          (fieldKey === "ageRange" && opt.field_key === "ageRanges")) &&
+        (opt.value === optionValue || opt.label_en === optionValue)
+    );
+    if (lang === "th" && dbOpt) return dbOpt.label_th;
+    return optionValue;
+  };
+
   const isAdmin = user?.role === "super_admin" || user?.role === "hr_admin";
 
   useEffect(() => {
@@ -157,8 +171,9 @@ function SurveysAdmin() {
       getDemographicsConstants(),
       getSssMappings(),
       getDepartmentsWithId(),
-      getBusinessUnits()
-    ]).then(([s, q, c, sss, deps, bus]) => {
+      getBusinessUnits(),
+      getDemographicOptions(),
+    ]).then(([s, q, c, sss, deps, bus, dbOpts]) => {
       setSurveys(s);
       setSections(q);
       setDemoConstants({
@@ -172,6 +187,7 @@ function SurveysAdmin() {
       });
       setDepartmentsWithBu(deps);
       setBusinessUnits(bus);
+      setDbDemoOptions(dbOpts);
       const map = new Map<string, SssQuestionMapping[]>();
       sss.filter((m: SssQuestionMapping) => m.isActive).forEach((m: SssQuestionMapping) => {
         const existing = map.get(m.questionId) || [];
@@ -777,7 +793,7 @@ function SurveysAdmin() {
                                             onCheckedChange={() => toggleDemoOption(f.key, opt)}
                                             className="h-4 w-4 rounded mt-0.5 border-slate-300 group-hover:border-indigo-400 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
                                           />
-                                          <span className="text-[11px] leading-tight text-slate-600">{opt}</span>
+                                          <span className="text-[11px] leading-tight text-slate-600">{getOptionLabel(f.key, opt)}</span>
                                         </label>
                                       ))}
                                     </div>

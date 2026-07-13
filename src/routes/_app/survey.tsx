@@ -617,17 +617,7 @@ function SurveyFlow({ survey, onBack }: { survey: MockSurvey; onBack: () => void
               ))}
             </div>
 
-            <div className="p-6 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-start gap-4 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-3 opacity-5">
-                <Info className="w-16 h-16 text-amber-600" />
-              </div>
-              <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center text-amber-600 shrink-0 shadow-sm border border-amber-200 dark:border-amber-500/20">
-                <Info className="w-5 h-5" />
-              </div>
-              <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 leading-relaxed uppercase tracking-wider max-w-lg">
-                หมายเหตุ: เพื่อความถูกต้องของข้อมูล ระบบจะไม่แสดงผลวิเคราะห์สำหรับกลุ่มที่มีผู้ตอบน้อยกว่า 5 คน
-              </p>
-            </div>
+
           </div>
         )}
 
