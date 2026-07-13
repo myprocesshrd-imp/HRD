@@ -17,6 +17,8 @@ CREATE INDEX IF NOT EXISTS idx_survey_audit_log_created_at ON survey_audit_log(c
 
 ALTER TABLE survey_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS survey_audit_log_read_admin ON survey_audit_log;
+
 CREATE POLICY survey_audit_log_read_admin ON survey_audit_log
   FOR SELECT USING (EXISTS (
     SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('super_admin', 'hr_admin')

@@ -9,6 +9,7 @@ export { setUserActive } from "./users";
 export * from "./responses";
 export * from "./notifications";
 export * from "./analytics";
+export * from "./bulletin";
 
 
 export {

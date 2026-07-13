@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
-import { getBulletinPosts } from "@/lib/mock-data";
+import { getBulletinPostsFromDB } from "@/services/api/bulletin";
 import type { BulletinPost, BulletinCategory } from "@/lib/mock-data";
 import { getSurveys } from "@/services/api";
 import type { MockSurvey } from "@/services/api";
@@ -298,11 +298,16 @@ function HomePage() {
 
   const [posts, setPosts] = useState<BulletinPost[]>([]);
   const [surveys, setSurveys] = useState<MockSurvey[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<BulletinCategory | "all">("all");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    setPosts(getBulletinPosts());
+    setPostsLoading(true);
+    getBulletinPostsFromDB().then((data) => {
+      setPosts(data);
+      setPostsLoading(false);
+    });
     getSurveys().then((data) => setSurveys(data.filter((s) => s.status === "Active")));
   }, []);
 
@@ -474,7 +479,12 @@ function HomePage() {
           )}
 
           {/* Regular posts */}
-          {filteredPosts.length > 0 ? (
+          {postsLoading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <div className="w-5 h-5 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin mr-2.5" />
+              <span className="text-xs font-medium">{lang === "th" ? "กำลังโหลดประกาศ..." : "Loading announcements..."}</span>
+            </div>
+          ) : filteredPosts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredPosts.map((post) => (
                 <PostCard key={post.id} post={post} lang={lang} />

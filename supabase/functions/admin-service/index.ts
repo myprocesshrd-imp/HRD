@@ -373,6 +373,61 @@ serve(async (req) => {
         break;
       }
 
+      // ── Bulletin Posts ──────────────────────────────────────────────────
+      case "BULLETIN_CREATE": {
+        ({ data: result, error } = await supabaseClient
+          .from("bulletin_posts")
+          .insert([{
+            title_th:  payload.title_th,
+            title_en:  payload.title_en,
+            content_th: payload.content_th,
+            content_en: payload.content_en,
+            category:  payload.category ?? "general",
+            image_url: payload.image_url ?? null,
+            is_pinned: payload.is_pinned ?? false,
+            posted_by: payload.posted_by,
+            links:     payload.links ?? [],
+          }])
+          .select()
+          .single());
+        break;
+      }
+
+      case "BULLETIN_UPDATE": {
+        const { id: bId, ...bData } = payload;
+        const patch: Record<string, unknown> = {};
+        if (bData.title_th  !== undefined) patch.title_th  = bData.title_th;
+        if (bData.title_en  !== undefined) patch.title_en  = bData.title_en;
+        if (bData.content_th !== undefined) patch.content_th = bData.content_th;
+        if (bData.content_en !== undefined) patch.content_en = bData.content_en;
+        if (bData.category  !== undefined) patch.category  = bData.category;
+        if (bData.image_url !== undefined) patch.image_url = bData.image_url;
+        if (bData.is_pinned !== undefined) patch.is_pinned = bData.is_pinned;
+        if (bData.posted_by !== undefined) patch.posted_by = bData.posted_by;
+        if (bData.links     !== undefined) patch.links     = bData.links;
+        ({ data: result, error } = await supabaseClient
+          .from("bulletin_posts")
+          .update(patch)
+          .eq("id", bId)
+          .select()
+          .single());
+        break;
+      }
+
+      case "BULLETIN_DELETE":
+        ({ error } = await supabaseClient
+          .from("bulletin_posts")
+          .delete()
+          .eq("id", payload.id));
+        break;
+
+      case "BULLETIN_TOGGLE_PIN":
+        ({ error } = await supabaseClient
+          .from("bulletin_posts")
+          .update({ is_pinned: payload.is_pinned })
+          .eq("id", payload.id));
+        break;
+
       default:
         return new Response(JSON.stringify({ error: "Unknown action" }), {
           status: 400,

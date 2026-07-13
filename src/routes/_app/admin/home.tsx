@@ -2,7 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
-import { getBulletinPosts, saveBulletinPosts } from "@/lib/mock-data";
+import {
+  getBulletinPostsFromDB,
+  createBulletinPost,
+  updateBulletinPost,
+  deleteBulletinPost,
+  togglePinBulletinPost,
+} from "@/services/api/bulletin";
 import type { BulletinPost, BulletinCategory, BulletinLink } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -425,20 +431,24 @@ function HomeAdmin() {
   const { user } = useAuth();
 
   const [posts, setPosts] = useState<BulletinPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<(Omit<BulletinPost, "id"> & { id?: string }) | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BulletinPost | null>(null);
 
   const displayName = user ? (lang === "th" ? user.nameTh : user.nameEn) : "Admin";
 
-  useEffect(() => {
-    setPosts(getBulletinPosts());
+  const loadPosts = useCallback(async () => {
+    setLoading(true);
+    const data = await getBulletinPostsFromDB();
+    setPosts(data);
+    setLoading(false);
   }, []);
 
-  const persistAndSet = useCallback((updated: BulletinPost[]) => {
-    setPosts(updated);
-    saveBulletinPosts(updated);
-  }, []);
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
 
   const handleAddNew = () => {
     setEditingPost(emptyPost(displayName));
@@ -450,22 +460,48 @@ function HomeAdmin() {
     setDialogOpen(true);
   };
 
-  const handleSave = (data: Omit<BulletinPost, "id"> & { id?: string }) => {
+  const handleSave = async (data: Omit<BulletinPost, "id"> & { id?: string }) => {
+    setSaving(true);
     if (data.id) {
-      // Update
-      const updated = posts.map((p) => p.id === data.id ? { ...data, id: data.id! } as BulletinPost : p);
-      persistAndSet(updated);
-      toast.success(lang === "th" ? "แก้ไขประกาศแล้ว" : "Announcement updated");
+      // Update existing
+      const updated = await updateBulletinPost(data.id, {
+        titleTh: data.titleTh,
+        titleEn: data.titleEn,
+        contentTh: data.contentTh,
+        contentEn: data.contentEn,
+        category: data.category,
+        imageUrl: data.imageUrl,
+        isPinned: data.isPinned,
+        postedBy: data.postedBy,
+        links: data.links,
+      });
+      if (updated) {
+        setPosts((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+        toast.success(lang === "th" ? "แก้ไขประกาศแล้ว" : "Announcement updated");
+      } else {
+        toast.error(lang === "th" ? "แก้ไขไม่สำเร็จ" : "Failed to update");
+      }
     } else {
-      // Create
-      const newPost: BulletinPost = {
-        ...data,
-        id: `b${Date.now()}`,
-        postedAt: new Date().toISOString(),
-      };
-      persistAndSet([newPost, ...posts]);
-      toast.success(lang === "th" ? "เพิ่มประกาศแล้ว" : "Announcement created");
+      // Create new
+      const created = await createBulletinPost({
+        titleTh: data.titleTh,
+        titleEn: data.titleEn,
+        contentTh: data.contentTh,
+        contentEn: data.contentEn,
+        category: data.category,
+        imageUrl: data.imageUrl,
+        isPinned: data.isPinned,
+        postedBy: data.postedBy,
+        links: data.links,
+      });
+      if (created) {
+        setPosts((prev) => [created, ...prev]);
+        toast.success(lang === "th" ? "เพิ่มประกาศแล้ว" : "Announcement created");
+      } else {
+        toast.error(lang === "th" ? "สร้างไม่สำเร็จ" : "Failed to create");
+      }
     }
+    setSaving(false);
     setDialogOpen(false);
     setEditingPost(null);
   };
@@ -474,26 +510,46 @@ function HomeAdmin() {
     setDeleteTarget(post);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    persistAndSet(posts.filter((p) => p.id !== deleteTarget.id));
-    toast.success(lang === "th" ? "ลบประกาศแล้ว" : "Announcement deleted");
+    const ok = await deleteBulletinPost(deleteTarget.id);
+    if (ok) {
+      setPosts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      toast.success(lang === "th" ? "ลบประกาศแล้ว" : "Announcement deleted");
+    } else {
+      toast.error(lang === "th" ? "ลบไม่สำเร็จ" : "Failed to delete");
+    }
     setDeleteTarget(null);
   };
 
-  const handleTogglePin = (post: BulletinPost) => {
-    const updated = posts.map((p) => p.id === post.id ? { ...p, isPinned: !p.isPinned } : p);
-    persistAndSet(updated);
-    toast.info(post.isPinned
-      ? (lang === "th" ? "เลิกปักหมุดแล้ว" : "Unpinned")
-      : (lang === "th" ? "ปักหมุดแล้ว" : "Pinned")
-    );
+  const handleTogglePin = async (post: BulletinPost) => {
+    const newPinned = !post.isPinned;
+    // Optimistic update
+    setPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, isPinned: newPinned } : p));
+    const ok = await togglePinBulletinPost(post.id, newPinned);
+    if (ok) {
+      toast.info(newPinned
+        ? (lang === "th" ? "ปักหมุดแล้ว" : "Pinned")
+        : (lang === "th" ? "เลิกปักหมุดแล้ว" : "Unpinned")
+      );
+    } else {
+      // Revert on failure
+      setPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, isPinned: post.isPinned } : p));
+      toast.error(lang === "th" ? "เกิดข้อผิดพลาด" : "Something went wrong");
+    }
   };
 
   const pinnedCount = posts.filter((p) => p.isPinned).length;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Loading overlay */}
+      {loading && (
+        <div className="flex items-center justify-center py-24 text-slate-400">
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin mr-3" />
+          <span className="text-sm font-medium">{lang === "th" ? "กำลังโหลด..." : "Loading..."}</span>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
