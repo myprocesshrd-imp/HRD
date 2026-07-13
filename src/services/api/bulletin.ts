@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { invokeAdminService } from "./admin-helper";
 import type { BulletinPost, BulletinLink, BulletinCategory } from "@/lib/mock-data";
 
@@ -39,17 +39,27 @@ function mapRow(row: BulletinRow): BulletinPost {
 // ── Fetch all posts (pinned first, then by date desc) ──
 // SELECT is allowed for authenticated anon users — use supabase client directly
 export async function getBulletinPostsFromDB(): Promise<BulletinPost[]> {
-  const { data, error } = await supabase
-    .from("bulletin_posts")
-    .select("*")
-    .order("is_pinned", { ascending: false })
-    .order("created_at", { ascending: false });
+  try {
+    const client = supabaseAdmin ?? supabase;
+    if (!client) {
+      console.error("[bulletin] Supabase client is not initialized");
+      return [];
+    }
+    const { data, error } = await client
+      .from("bulletin_posts")
+      .select("*")
+      .order("is_pinned", { ascending: false })
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("[bulletin] fetch error:", error.message);
+    if (error) {
+      console.error("[bulletin] fetch error:", error.message);
+      return [];
+    }
+    return (data as BulletinRow[]).map(mapRow);
+  } catch (err: any) {
+    console.error("[bulletin] getBulletinPostsFromDB error:", err);
     return [];
   }
-  return (data as BulletinRow[]).map(mapRow);
 }
 
 // ── Create a new post (via Edge Function to bypass RLS) ──

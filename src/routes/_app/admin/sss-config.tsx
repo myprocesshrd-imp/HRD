@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { useI18n } from "@/lib/i18n";
-import { getQuestionBank } from "@/services/api";
-import type { SurveySection, Question } from "@/services/api";
+import { getQuestionBank, getSurveys } from "@/services/api";
+import type { SurveySection, Question, MockSurvey } from "@/services/api";
 import {
   getSssMappings,
   upsertSssMapping,
@@ -20,6 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -115,6 +122,8 @@ function SssConfigPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // UI state
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string>("all");
+  const [surveys, setSurveys] = useState<MockSurvey[]>([]);
   const [search, setSearch] = useState("");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [activeDim, setActiveDim] = useState<SssDimension>("say");
@@ -134,14 +143,14 @@ function SssConfigPage() {
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [bank, maps, agg] = await Promise.all([
+      const [bank, maps, list] = await Promise.all([
         getQuestionBank(),
         getSssMappings(),
-        getSssAggregateForSurvey("all"),
+        getSurveys(),
       ]);
       setSections(bank);
       setMappings(maps);
-      setAggregate(agg);
+      setSurveys(list);
       if (bank.length > 0) {
         setExpandedSections(Object.fromEntries(bank.map(s => [s.id, true])));
       }
@@ -151,6 +160,18 @@ function SssConfigPage() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadAgg() {
+      const agg = await getSssAggregateForSurvey(selectedSurveyId);
+      if (active) {
+        setAggregate(agg);
+      }
+    }
+    loadAgg();
+    return () => { active = false; };
+  }, [selectedSurveyId]);
 
   // ── Derived data ────────────────────────────────────────────────────────
   const mappingsByDim = useMemo<Record<SssDimension, SssQuestionMapping[]>>(() => ({
@@ -373,22 +394,46 @@ function SssConfigPage() {
         </Card>
       </div>
 
-      {/* ── Recalculate ── */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={recalculating}
-          onClick={handleRecalculate}
-        >
-          <Zap className={cn("w-4 h-4", recalculating && "animate-spin")} />
-          {recalculating ? t("sss.recalculating") : t("sss.recalculate")}
-        </Button>
-        {aggregate && (
-          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            {t("sss.basedOn")} {aggregate.respondents} {t("sss.responses")}
+      {/* ── Filter & Action Row ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-3 flex-1">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
+            {lang === "th" ? "เลือกแบบสำรวจที่ต้องการดูคะแนน:" : "Select survey to view score:"}
           </span>
-        )}
+          <Select value={selectedSurveyId} onValueChange={setSelectedSurveyId}>
+            <SelectTrigger className="w-full sm:w-[320px] rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <SelectValue placeholder={lang === "th" ? "เลือกแบบสำรวจ" : "Select survey"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {lang === "th" ? "แบบสำรวจทั้งหมด (รวม)" : "All Surveys (Combined)"}
+              </SelectItem>
+              {surveys.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {lang === "th" ? s.titleTh : s.titleEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={recalculating}
+            onClick={handleRecalculate}
+            className="rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <Zap className={cn("w-4 h-4 mr-1.5", recalculating && "animate-spin")} />
+            {recalculating ? t("sss.recalculating") : t("sss.recalculate")}
+          </Button>
+          {aggregate && (
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              {t("sss.basedOn")} {aggregate.respondents} {t("sss.responses")}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── Main 2-column layout ── */}
