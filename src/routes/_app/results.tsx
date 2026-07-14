@@ -25,7 +25,8 @@ import {
 
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  PieChart, Pie
 } from "recharts";
 import {
   BarChart3, TrendingUp, Download, Activity, 
@@ -160,7 +161,7 @@ function ResultsPage() {
       const ratingNum = parseInt(d.rating);
       if (!isNaN(ratingNum)) {
         total += d.count;
-        if (ratingNum >= 4) favorable += d.count;
+        if (ratingNum >= 5) favorable += d.count;
         if (ratingNum <= 2) unfavorable += d.count;
       }
     });
@@ -179,7 +180,31 @@ function ResultsPage() {
     return [...categoryScores].sort((a, b) => a.score - b.score)[0];
   }, [categoryScores]);
 
-  const toPercent = (score: number) => Math.round((score / 5) * 100);
+  const toPercent = (score: number) => Math.round((score / 6) * 100);
+
+  const ratingDonutData = useMemo(() => {
+    return distribution.map(d => ({
+      name: lang === "th" ? d.rating.replace("Stars", "ดาว") : d.rating,
+      value: d.count
+    }));
+  }, [distribution, lang]);
+
+  const sentimentDonutData = useMemo(() => {
+    let fav = 0, neut = 0, unfav = 0;
+    distribution.forEach(d => {
+      const val = parseInt(d.rating);
+      if (!isNaN(val)) {
+        if (val >= 5) fav += d.count;
+        else if (val >= 3) neut += d.count;
+        else unfav += d.count;
+      }
+    });
+    return [
+      { name: lang === "th" ? "เชิงบวก (5-6 ดาว)" : "Favorable (5-6 Stars)", value: fav, color: "#10b981" },
+      { name: lang === "th" ? "ปานกลาง (3-4 ดาว)" : "Neutral (3-4 Stars)", value: neut, color: "#eab308" },
+      { name: lang === "th" ? "ต้องปรับปรุง (1-2 ดาว)" : "Unfavorable (1-2 Stars)", value: unfav, color: "#ef4444" },
+    ].filter(item => item.value > 0);
+  }, [distribution, lang]);
 
   if (!user || user.role === "employee") return null;
 
@@ -349,7 +374,7 @@ function ResultsPage() {
          {[
            { 
              label: lang === "th" ? "คะแนนความผูกพัน" : "Engagement Index", 
-             value: `${stats.avg.toFixed(2)}/5.00`, 
+             value: `${stats.avg.toFixed(2)}/6.00`, 
              icon: Zap, color: "text-primary", bg: "bg-primary/5", 
              sub: lang === "th" ? "+0.4 จากรอบก่อน" : "+0.4 vs Prev" 
            },
@@ -363,7 +388,7 @@ function ResultsPage() {
              label: lang === "th" ? "คะแนนเชิงบวก" : "Favorable Score", 
              value: `${distributionStats.favPercent}%`, 
              icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50", 
-             sub: lang === "th" ? "ระดับ 4-5 (ดีถึงดีมาก)" : "4-5 Stars Favorable" 
+             sub: lang === "th" ? "ระดับ 5-6 (ดีถึงดีมาก)" : "5-6 Stars Favorable" 
            },
            { 
              label: lang === "th" ? "คะแนนที่ต้องปรับปรุง" : "Needs Improvement", 
@@ -421,7 +446,7 @@ function ResultsPage() {
                   </defs>
                   <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="period" stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
-                  <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
+                  <YAxis domain={[0, 6]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} itemStyle={{ color: "hsl(var(--foreground))" }} />
                   <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={3} fill="url(#colorScoreResults)" strokeLinecap="round" />
                 </AreaChart>
@@ -452,8 +477,9 @@ function ResultsPage() {
                  <RadarChart data={categoryScores} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                    <PolarGrid stroke="#e2e8f0" strokeWidth={1} />
                    <PolarAngleAxis dataKey="category" tick={{ fill: '#94a3b8', fontSize: 8, fontWeight: 700 }} />
-                   <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-                   <Radar name="Intel" dataKey="score" stroke="#3b82f6" strokeWidth={2} fill="#3b82f6" fillOpacity={0.15} />
+                   <PolarRadiusAxis domain={[0, 6]} tick={false} axisLine={false} />
+                   <Radar name={lang === "th" ? "คะแนนเฉลี่ย" : "Average Score"} dataKey="score" stroke="#3b82f6" strokeWidth={2} fill="#3b82f6" fillOpacity={0.15} />
+                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} formatter={(value: number) => [`${Number(value).toFixed(2)} / 6.00`, lang === "th" ? "คะแนน" : "Score"]} />
                  </RadarChart>
                </ResponsiveContainer>
              )}
@@ -483,8 +509,8 @@ function ResultsPage() {
                <BarChart data={filteredByDept} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                  <XAxis dataKey="dept" stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
-                 <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
-                 <Tooltip cursor={{ fill: "rgba(255,255,255,0.05)" }} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} itemStyle={{ color: "hsl(var(--foreground))" }} />
+                 <YAxis domain={[0, 6]} stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} />
+                 <Tooltip cursor={{ fill: "rgba(255,255,255,0.05)" }} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }} itemStyle={{ color: "hsl(var(--foreground))" }} formatter={(value: number) => [`${Number(value).toFixed(2)} / 6.00`, lang === "th" ? "คะแนนความผูกพัน" : "Engagement Score"]} />
                  <Bar dataKey="score" radius={[4, 4, 4, 4]} barSize={40}>
                     {filteredByDept.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -495,6 +521,177 @@ function ResultsPage() {
            )}
         </CardContent>
       </Card>
+
+      {/* ── Response Distribution & Sentiment Donut Section ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Card 1: Rating Breakdown */}
+        <Card className="border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
+          <CardHeader className="px-6 py-5 bg-slate-50/50 dark:bg-slate-800/30 border-b dark:border-slate-800">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-indigo-600 shadow-sm">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                  {lang === "th" ? "สัดส่วนคะแนนดิบ (1-6 ดาว)" : "Rating Breakdown (1-6 Stars)"}
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+                  {lang === "th" ? "สัดส่วนคำตอบแยกตามระดับดาว" : "Distribution of all given scores"}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            {loading ? <Skeleton className="w-full h-[220px] rounded-lg" /> : (
+              ratingDonutData.length === 0 ? (
+                <div className="w-full h-[220px] flex items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-wider">
+                  {lang === "th" ? "ไม่มีข้อมูลการสำรวจ" : "No responses data"}
+                </div>
+              ) : (
+                <>
+                  <div className="relative w-[200px] h-[200px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={ratingDonutData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {ratingDonutData.map((entry, index) => {
+                            const COLORS = ["#ef4444", "#f97316", "#eab308", "#a855f7", "#3b82f6", "#10b981"];
+                            return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                          })}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "11px", fontWeight: "700" }}
+                          itemStyle={{ color: "hsl(var(--foreground))" }}
+                          formatter={(value: number) => [`${value} ${lang === "th" ? "คำตอบ" : "responses"}`, lang === "th" ? "จำนวน" : "Count"]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-2xl font-black text-slate-800 dark:text-white">
+                        {ratingDonutData.reduce((sum, d) => sum + d.value, 0)}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                        {lang === "th" ? "คำตอบรวม" : "TOTAL ANS"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 w-full space-y-2">
+                    {ratingDonutData.map((d, index) => {
+                      const COLORS = ["#ef4444", "#f97316", "#eab308", "#a855f7", "#3b82f6", "#10b981"];
+                      const total = ratingDonutData.reduce((sum, item) => sum + item.value, 0);
+                      const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                      return (
+                        <div key={d.name} className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                            <span>{d.name}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-right">
+                            <span className="text-slate-400 font-semibold">{d.value}</span>
+                            <span className="w-10 text-slate-900 dark:text-white">{pct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Sentiment breakdown */}
+        <Card className="border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-slate-900/50">
+          <CardHeader className="px-6 py-5 bg-slate-50/50 dark:bg-slate-800/30 border-b dark:border-slate-800">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-emerald-600 shadow-sm">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                  {lang === "th" ? "ระดับความรู้สึก (Sentiment)" : "Sentiment Breakdown"}
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+                  {lang === "th" ? "สัดส่วนคำตอบเชิงบวก / ปานกลาง / ปรับปรุง" : "Overall favorability segmentation"}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            {loading ? <Skeleton className="w-full h-[220px] rounded-lg" /> : (
+              sentimentDonutData.length === 0 ? (
+                <div className="w-full h-[220px] flex items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-wider">
+                  {lang === "th" ? "ไม่มีข้อมูลการสำรวจ" : "No sentiment data"}
+                </div>
+              ) : (
+                <>
+                  <div className="relative w-[200px] h-[200px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={sentimentDonutData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {sentimentDonutData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "11px", fontWeight: "700" }}
+                          itemStyle={{ color: "hsl(var(--foreground))" }}
+                          formatter={(value: number) => [`${value} ${lang === "th" ? "คำตอบ" : "responses"}`, lang === "th" ? "จำนวน" : "Count"]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                        {(() => {
+                          const total = sentimentDonutData.reduce((sum, d) => sum + d.value, 0);
+                          const fav = sentimentDonutData.find(d => d.name.includes("Favorable") || d.name.includes("เชิงบวก"))?.value || 0;
+                          return total > 0 ? Math.round((fav / total) * 100) : 0;
+                        })()}%
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">
+                        {lang === "th" ? "ความพึงพอใจ" : "FAVORABLE"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 w-full space-y-2">
+                    {sentimentDonutData.map((d) => {
+                      const total = sentimentDonutData.reduce((sum, item) => sum + item.value, 0);
+                      const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                      return (
+                        <div key={d.name} className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                            <span>{d.name}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-right">
+                            <span className="text-slate-400 font-semibold">{d.value}</span>
+                            <span className="w-10 text-slate-900 dark:text-white">{pct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* ── Metadata Footer ── */}
       <div className="flex flex-wrap items-center justify-center gap-8 opacity-40 pt-4">

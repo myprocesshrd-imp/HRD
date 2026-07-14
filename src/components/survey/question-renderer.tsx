@@ -31,7 +31,7 @@ export function QuestionRenderer({ question, value, onChange }: Props) {
   switch (question.type) {
     case "rating": {
       const min = question.minValue ?? 1;
-      const max = question.maxValue ?? 5;
+      const max = question.maxValue ?? 6;
       const nums: number[] = [];
       for (let i = min; i <= max; i++) nums.push(i);
       

@@ -82,7 +82,7 @@ export function normalizeAnswer(raw: number | string | null | undefined): number
 export function calculateSssFromAnswers(
   answers: Record<string, number | string | null | undefined>,
   mappings: SssQuestionMapping[],
-  maxRating = 5
+  maxRating = 6
 ): SssScoreResult {
   const buckets: Record<SssDimension, { sum: number; maxSum: number }> = {
     say:    { sum: 0, maxSum: 0 },
@@ -98,7 +98,7 @@ export function calculateSssFromAnswers(
 
     // Determine max for this question type
     // single_select choices: a=4 is max → maxRating = 4
-    // rating/NPS: maxRating = 5 (or 10 for NPS, but we normalize separately)
+    // rating/NPS: maxRating = 6 (or 10 for NPS, but we normalize separately)
     const effectiveMax = typeof raw === "string" && /^[a-d]$/i.test(String(raw).trim()) ? 4 : maxRating;
 
     buckets[m.dimension].sum    += value * m.weight;

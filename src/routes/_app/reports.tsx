@@ -356,9 +356,9 @@ function ReportsPage() {
   if (!user || user.role === "employee") return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+    <div className="space-y-5 animate-in fade-in duration-500 pb-10">
 
-      {/* ── Page Header ── */}
+      {/* ── Page Header with inline campaign selector ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -366,8 +366,8 @@ function ReportsPage() {
           </h1>
           <p className="text-[15px] font-medium text-slate-400">
             {lang === "th"
-              ? "เลือกแบบสำรวจที่ต้องการเพื่อดูผลการวิเคราะห์ สถิติเชิงภาพ หรือตรวจสอบและดาวน์โหลดตารางข้อมูลดิบ"
-              : "Select a survey topic to view visual analytics, explore raw data spreadsheets, or export report packages."}
+              ? "ตรวจสอบและดาวน์โหลดตารางข้อมูลดิบจากแบบสำรวจ"
+              : "Inspect and download raw response data from survey campaigns."}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -377,14 +377,14 @@ function ReportsPage() {
             className="h-10 px-4 rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 font-bold text-xs gap-2.5 shadow-sm uppercase tracking-wider"
           >
             <Printer className="w-4 h-4 text-slate-400" />
-            {lang === "th" ? "พิมพ์รายงาน (PDF)" : "Print PDF"}
+            {lang === "th" ? "พิมพ์ (PDF)" : "Print PDF"}
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="h-10 px-4 rounded-xl bg-slate-900 dark:bg-primary text-white hover:bg-slate-850 dark:hover:bg-primary/95 font-bold text-xs uppercase tracking-wider gap-2 shadow-md">
                 <Download className="w-4 h-4" />
-                {lang === "th" ? "ดาวน์โหลดรายงาน" : "Download Package"}
+                {lang === "th" ? "ดาวน์โหลด" : "Download"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl border-slate-100 dark:border-slate-800 dark:bg-slate-900 shadow-2xl">
@@ -420,446 +420,251 @@ function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Main Layout with Survey Segmentation Sidebar ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-
-        {/* 1. Left Sidebar: Survey List / Segmentation */}
-        <div className="xl:col-span-1 space-y-4">
-          <Card className="rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
-            <div className="p-4 bg-slate-50/50 dark:bg-slate-800/10 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" />
-                {lang === "th" ? "เลือกแคมเปญแบบสำรวจ" : "Survey Topics"}
-              </h3>
-            </div>
-            <div className="p-2 space-y-1">
-              <button
-                onClick={() => setSelectedSurveyId("all")}
+      {/* ── Campaign Selector Bar (compact, full-width) ── */}
+      <div className="flex flex-wrap items-center gap-3 p-3 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">
+          <Layers className="w-4 h-4 text-primary" />
+          {lang === "th" ? "เลือกแคมเปญ:" : "Campaign:"}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <button
+            onClick={() => setSelectedSurveyId("all")}
+            className={cn(
+              "h-8 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 border",
+              selectedSurveyId === "all"
+                ? "bg-slate-900 dark:bg-primary text-white border-transparent shadow-sm"
+                : "text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+            )}
+          >
+            <Database className="w-3.5 h-3.5" />
+            {lang === "th" ? "ทั้งหมด" : "All"}
+            <Badge variant="outline" className={cn("text-[9px] h-4 px-1 ml-0.5", selectedSurveyId === "all" ? "border-white/30 text-white" : "text-slate-400")}>
+              {surveys.length}
+            </Badge>
+          </button>
+          {surveys.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSelectedSurveyId(s.id)}
+              className={cn(
+                "h-8 px-3 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 border max-w-[220px]",
+                selectedSurveyId === s.id
+                  ? "bg-slate-900 dark:bg-primary text-white border-transparent shadow-sm"
+                  : "text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              )}
+            >
+              <span className="truncate">{lang === "th" ? s.titleTh : s.titleEn}</span>
+              <Badge
+                variant="secondary"
                 className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-between",
-                  selectedSurveyId === "all"
-                    ? "bg-slate-900 dark:bg-primary text-white shadow-md"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                  "text-[9px] uppercase tracking-wider px-1.5 py-0 shrink-0",
+                  s.status === "Active" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                  "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4" />
-                  <span>{lang === "th" ? "แคมเปญทั้งหมด" : "All Campaigns"}</span>
-                </div>
-                <Badge variant="outline" className={cn("text-[9px]", selectedSurveyId === "all" ? "border-white/20 text-white" : "text-slate-400")}>
-                  {surveys.length}
-                </Badge>
-              </button>
-
-              <Separator className="my-2 bg-slate-100 dark:bg-slate-800" />
-
-              {surveys.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedSurveyId(s.id)}
-                  className={cn(
-                    "w-full text-left px-3 py-2.5 rounded-xl transition-all space-y-1",
-                    selectedSurveyId === s.id
-                      ? "bg-slate-900 dark:bg-primary text-white shadow-md"
-                      : "text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span className="font-bold text-[13px] tracking-tight leading-tight line-clamp-1">
-                      {lang === "th" ? s.titleTh : s.titleEn}
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "text-[9px] uppercase tracking-wider px-1.5 py-0 shrink-0",
-                        s.status === "Active" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                        s.status === "Closed" ? "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400" :
-                        s.status === "Archived" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" :
-                        "bg-amber-500/10 text-amber-600"
-                      )}
-                    >
-                      {s.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] opacity-75">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>{s.startDate} - {s.endDate}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </Card>
+                {s.status}
+              </Badge>
+            </button>
+          ))}
         </div>
-
-        {/* 2. Right Pane: Detailed Metrics & Reports Visuals */}
-        <div className="xl:col-span-3 space-y-6">
-
-          {/* Survey Title Bar */}
-          <div className="bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
-                {lang === "th" ? "กำลังเลือกดูแบบสำรวจ" : "Active Focus Topic"}
-              </div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {activeSurveyTitle}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="px-3 py-1 text-xs font-bold capitalize">
-                Type: {activeSurvey?.surveyType || "identified"}
-              </Badge>
-              <Badge variant="outline" className="px-3 py-1 text-xs font-bold">
-                {lang === "th" ? "กลุ่มเป้าหมาย" : "Target"}: {targetResponses}
-              </Badge>
-            </div>
-          </div>
-
-          {/* ── Key Metrics Grid ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              {
-                label: lang === "th" ? "การมีส่วนร่วมของพนักงาน" : "Participation Rate",
-                value: `${metrics.participationRate}%`,
-                desc: `${metrics.totalCount} / ${targetResponses} responses`,
-                icon: Users,
-                color: "text-blue-600 dark:text-blue-400",
-                bg: "bg-blue-50 dark:bg-blue-950/20",
-              },
-              {
-                label: lang === "th" ? "คะแนนความผูกพันเฉลี่ย" : "Avg Engagement Score",
-                value: `${metrics.avgScore} / 5.00`,
-                desc: "Calculated across rating answers",
-                icon: TrendingUp,
-                color: "text-emerald-600 dark:text-emerald-400",
-                bg: "bg-emerald-50 dark:bg-emerald-900/20",
-              },
-              {
-                label: lang === "th" ? "จำนวนการส่งทั้งหมด" : "Total Responses",
-                value: metrics.totalCount.toLocaleString(),
-                desc: "Strictly bound to database records",
-                icon: Database,
-                color: "text-violet-600 dark:text-violet-400",
-                bg: "bg-violet-50 dark:bg-violet-900/20",
-              },
-            ].map((card) => (
-              <div key={card.label} className="p-5 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm flex items-start gap-4">
-                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm", card.bg, card.color)}>
-                  <card.icon className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{card.label}</p>
-                  <p className="text-2xl font-black text-slate-900 dark:text-white mt-1 leading-none">{card.value}</p>
-                  <p className="text-xs font-semibold text-slate-450 dark:text-slate-400 mt-2">{card.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Main Panel Tabs ── */}
-          <Tabs value={pageMode} onValueChange={(val) => setPageMode(val as PageMode)} className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 p-2 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-xl">
-              <TabsList className="bg-white/50 dark:bg-slate-800/50 h-10 p-1 rounded-lg border border-slate-200 dark:border-slate-700 gap-1">
-                <TabsTrigger value="dashboard" className="h-8 px-4 rounded-md font-bold uppercase tracking-wider text-[10px] gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  {lang === "th" ? "ผลการวิเคราะห์ (Dashboard)" : "Analytics Dashboard"}
-                </TabsTrigger>
-                <TabsTrigger value="sheet" className="h-8 px-4 rounded-md font-bold uppercase tracking-wider text-[10px] gap-2">
-                  <Grid3x3 className="w-4 h-4" />
-                  {lang === "th" ? "หน้าตาราง (Spreadsheet)" : "Spreadsheet View"}
-                </TabsTrigger>
-                <TabsTrigger value="table" className="h-8 px-4 rounded-md font-bold uppercase tracking-wider text-[10px] gap-2">
-                  <LayoutList className="w-4 h-4" />
-                  {lang === "th" ? "หน้าข้อมูลดิบ (Table)" : "Row Data Table"}
-                </TabsTrigger>
-              </TabsList>
-
-              <div className="flex items-center gap-2">
-                <Badge className="bg-emerald-500 text-white font-bold gap-1 text-[9px] uppercase tracking-wider">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Data Integrity Verified
-                </Badge>
-              </div>
-            </div>
-
-            {/* A. Analytics Dashboard */}
-            <TabsContent value="dashboard" className="space-y-6 outline-none">
-              {loading ? (
-                <div className="py-20 flex flex-col items-center justify-center gap-4 bg-white dark:bg-slate-900/30 rounded-2xl border">
-                  <div className="w-10 h-10 rounded-full border-4 border-slate-100 border-t-primary animate-spin" />
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Analytics Dashboard…</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                  {/* 1. Category Engagement Scores */}
-                  <Card className="rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
-                    <CardHeader>
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <Target className="w-5 h-5 text-indigo-500" />
-                        {lang === "th" ? "คะแนนความผูกพันแยกตามหมวดหมู่" : "Category Dimension Scores"}
-                      </CardTitle>
-                      <CardDescription>Dimension evaluation across survey questions</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[280px]">
-                      {categoryScores.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={categoryScores}>
-                            <PolarGrid stroke="#e2e8f0" />
-                            <PolarAngleAxis dataKey="category" tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }} />
-                            <PolarRadiusAxis angle={30} domain={[0, 5]} />
-                            <Radar name="Engagement Score" dataKey="score" stroke="#0f172a" fill="#3b82f6" fillOpacity={0.4} />
-                            <Tooltip />
-                          </RadarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-sm font-semibold text-slate-400 italic">
-                          No category metrics available
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* 2. Department Breakdown */}
-                  <Card className="rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
-                    <CardHeader>
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <Users className="w-5 h-5 text-violet-500" />
-                        {lang === "th" ? "คะแนนเฉลี่ยรายฝ่าย" : "Department Engagement Scores"}
-                      </CardTitle>
-                      <CardDescription>Average score comparison across departments</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[280px]">
-                      {engagementByDept.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={engagementByDept} layout="vertical" margin={{ left: 10, right: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                            <XAxis type="number" domain={[0, 5]} />
-                            <YAxis type="category" dataKey="dept" width={100} tick={{ fontSize: 11, fontWeight: "bold" }} />
-                            <Tooltip />
-                            <Bar dataKey="score" radius={[0, 6, 6, 0]}>
-                              {engagementByDept.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "#0f172a" : "#3b82f6"} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-sm font-semibold text-slate-400 italic">
-                          No departmental breakdown metrics
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* 3. Engagement Score Trend */}
-                  <Card className="md:col-span-2 rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
-                    <CardHeader>
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-emerald-500" />
-                        {lang === "th" ? "แนวโน้มคะแนนความผูกพัน" : "Engagement Score Trend"}
-                      </CardTitle>
-                      <CardDescription>Chronological trend projection of submissions</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[240px]">
-                      {trendData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trendData}>
-                            <defs>
-                              <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="period" tick={{ fontSize: 10, fontWeight: "bold" }} />
-                            <YAxis domain={[0, 5]} />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-sm font-semibold text-slate-400 italic">
-                          No trend line dataset available
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </TabsContent>
-
-            {/* B. Google Sheets Spreadsheet View */}
-            <TabsContent value="sheet" className="outline-none">
-              <Card className="rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
-                <div className="p-4 border-b flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/10">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      {lang === "th" ? "ตารางกริดข้อมูลแบบ Google Sheets" : "Interactive Spreadsheet Grid"}
-                    </h3>
-                    <p className="text-xs text-slate-400 font-medium">Click on any row to drill down into the response metrics</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Search className="w-4 h-4 text-slate-400" />
-                    <Input
-                      placeholder={lang === "th" ? "ค้นหาข้อมูลในตาราง…" : "Search grid cells…"}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-56 h-8 rounded-lg text-xs"
-                    />
-                  </div>
-                </div>
-                <div className="relative h-[550px] overflow-hidden">
-                  {loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-950/50">
-                      <div className="w-10 h-10 rounded-full border-4 border-slate-100 border-t-primary animate-spin" />
-                    </div>
-                  ) : (
-                    <SpreadsheetView
-                      responses={filteredResponses}
-                      surveys={surveys}
-                      questions={questions}
-                      search={searchQuery}
-                      onRowClick={handleOpenDetail}
-                    />
-                  )}
-                </div>
-              </Card>
-            </TabsContent>
-
-            {/* C. Traditional Paginated Data Table */}
-            <TabsContent value="table" className="space-y-4 outline-none">
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3 flex-1 min-w-[240px]">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-450" />
-                    <Input
-                      placeholder={lang === "th" ? "ค้นหารหัสตอบกลับ..." : "Search responses ID..."}
-                      value={searchQuery}
-                      onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                      className="h-9 pl-9 rounded-lg"
-                    />
-                  </div>
-                  <Select value={filterDept} onValueChange={(val) => { setFilterDept(val); setCurrentPage(1); }}>
-                    <SelectTrigger className="w-[180px] h-9 rounded-lg">
-                      <SelectValue placeholder="All Departments" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{lang === "th" ? "ทุกฝ่าย" : "All Departments"}</SelectItem>
-                      {departments.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="text-xs font-bold text-slate-400">
-                  {lang === "th" ? "พบข้อมูล" : "FOUND"}: {filteredResponses.length} {lang === "th" ? "รายการ" : "records"}
-                </div>
-              </div>
-
-              <Card className="rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-slate-50 dark:bg-slate-800/30">
-                      <TableRow>
-                        <TableHead onClick={() => toggleSort("id")} className="cursor-pointer font-bold select-none h-11 text-xs">
-                          Response ID <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
-                        </TableHead>
-                        <TableHead onClick={() => toggleSort("survey")} className="cursor-pointer font-bold select-none h-11 text-xs">
-                          {lang === "th" ? "แบบสำรวจ" : "Survey"} <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
-                        </TableHead>
-                        <TableHead onClick={() => toggleSort("dept")} className="cursor-pointer font-bold select-none h-11 text-xs">
-                          {lang === "th" ? "ฝ่าย" : "Department"} <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
-                        </TableHead>
-                        <TableHead onClick={() => toggleSort("completed_at")} className="cursor-pointer font-bold select-none h-11 text-xs">
-                          {lang === "th" ? "วันที่เสร็จสิ้น" : "Completed At"} <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
-                        </TableHead>
-                        <TableHead className="font-bold h-11 text-xs text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="h-40 text-center">
-                            <div className="w-7 h-7 rounded-full border-2 border-slate-100 border-t-primary animate-spin mx-auto mb-2" />
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Verifying D1 data…</span>
-                          </TableCell>
-                        </TableRow>
-                      ) : paginatedResponses.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="h-32 text-center text-slate-400 italic">
-                            No records found matching filters
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        paginatedResponses.map((row) => {
-                          const survey = surveys.find((s) => s.id === row.survey_id);
-                          return (
-                            <TableRow key={row.id} className="hover:bg-slate-50/55 dark:hover:bg-slate-800/40">
-                              <TableCell className="font-mono font-bold text-xs max-w-[140px] truncate">
-                                {row.id}
-                              </TableCell>
-                              <TableCell className="font-medium text-xs max-w-[200px] truncate">
-                                {lang === "th" ? (survey?.titleTh ?? "—") : (survey?.titleEn ?? "—")}
-                              </TableCell>
-                              <TableCell className="font-semibold text-xs">
-                                {row.demographics?.department || row.demographics?.dept || "N/A"}
-                              </TableCell>
-                              <TableCell className="text-xs text-slate-450 dark:text-slate-400 font-medium">
-                                {row.completed_at ? new Date(row.completed_at).toLocaleString() : "N/A"}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleOpenDetail(row)}
-                                  className="h-8 rounded-lg text-xs font-bold gap-1.5"
-                                >
-                                  <FileText className="w-3.5 h-3.5 text-primary" />
-                                  {lang === "th" ? "รายละเอียด" : "Drill Down"}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Table Pagination */}
-                {totalPages > 1 && (
-                  <div className="p-4 border-t flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/10">
-                    <div className="text-xs font-medium text-slate-400">
-                      Page {currentPage} of {totalPages}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage((c) => Math.max(1, c - 1))}
-                        disabled={currentPage === 1}
-                        className="h-8 w-8 rounded-lg"
-                      >
-                        <ChevronRight className="w-4 h-4 rotate-180" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage((c) => Math.min(totalPages, c + 1))}
-                        disabled={currentPage === totalPages}
-                        className="h-8 w-8 rounded-lg"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
-          </Tabs>
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          <Badge className="bg-emerald-500 text-white font-bold gap-1 text-[9px] uppercase tracking-wider">
+            <ShieldCheck className="w-3 h-3" />
+            {lang === "th" ? "ข้อมูลถูกต้อง" : "Data Verified"}
+          </Badge>
+          <span className="text-[10px] font-bold text-slate-400">
+            {metrics.totalCount} {lang === "th" ? "รายการ" : "records"} · {activeSurveyTitle}
+          </span>
         </div>
       </div>
+
+      {/* ── Main Tabs: Spreadsheet + Raw Table ── */}
+      <Tabs value={pageMode === "dashboard" ? "sheet" : pageMode} onValueChange={(val) => setPageMode(val as PageMode)} className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-xl">
+          <TabsList className="bg-white/50 dark:bg-slate-800/50 h-10 p-1 rounded-lg border border-slate-200 dark:border-slate-700 gap-1">
+            <TabsTrigger value="sheet" className="h-8 px-4 rounded-md font-bold uppercase tracking-wider text-[10px] gap-2">
+              <Grid3x3 className="w-4 h-4" />
+              {lang === "th" ? "หน้าตาราง (Spreadsheet)" : "Spreadsheet View"}
+            </TabsTrigger>
+            <TabsTrigger value="table" className="h-8 px-4 rounded-md font-bold uppercase tracking-wider text-[10px] gap-2">
+              <LayoutList className="w-4 h-4" />
+              {lang === "th" ? "ข้อมูลดิบ (Table)" : "Row Data Table"}
+            </TabsTrigger>
+          </TabsList>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            {lang === "th" ? "พบ" : "Found"}: {filteredResponses.length} {lang === "th" ? "รายการ" : "records"}
+          </div>
+        </div>
+
+        {/* A. Spreadsheet View */}
+        <TabsContent value="sheet" className="outline-none">
+          <Card className="rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
+            <div className="p-4 border-b flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/10">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {lang === "th" ? "ตารางกริดข้อมูลแบบ Google Sheets" : "Interactive Spreadsheet Grid"}
+                </h3>
+                <p className="text-xs text-slate-400 font-medium">Click on any row to drill down into the response metrics</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder={lang === "th" ? "ค้นหาข้อมูลในตาราง…" : "Search grid cells…"}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-56 h-8 rounded-lg text-xs"
+                />
+              </div>
+            </div>
+            <div className="relative h-[calc(100vh-320px)] min-h-[480px] overflow-hidden">
+              {loading ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-950/50">
+                  <div className="w-10 h-10 rounded-full border-4 border-slate-100 border-t-primary animate-spin" />
+                </div>
+              ) : (
+                <SpreadsheetView
+                  responses={filteredResponses}
+                  surveys={surveys}
+                  questions={questions}
+                  search={searchQuery}
+                  onRowClick={handleOpenDetail}
+                />
+              )}
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* B. Traditional Paginated Data Table */}
+        <TabsContent value="table" className="space-y-4 outline-none">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3 flex-1 min-w-[240px]">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-450" />
+                <Input
+                  placeholder={lang === "th" ? "ค้นหารหัสตอบกลับ..." : "Search responses ID..."}
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="h-9 pl-9 rounded-lg"
+                />
+              </div>
+              <Select value={filterDept} onValueChange={(val) => { setFilterDept(val); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[180px] h-9 rounded-lg">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{lang === "th" ? "ทุกฝ่าย" : "All Departments"}</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="text-xs font-bold text-slate-400">
+              {lang === "th" ? "พบข้อมูล" : "FOUND"}: {filteredResponses.length} {lang === "th" ? "รายการ" : "records"}
+            </div>
+          </div>
+
+          <Card className="rounded-2xl border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900/50">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50 dark:bg-slate-800/30">
+                  <TableRow>
+                    <TableHead onClick={() => toggleSort("id")} className="cursor-pointer font-bold select-none h-11 text-xs">
+                      Response ID <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
+                    </TableHead>
+                    <TableHead onClick={() => toggleSort("survey")} className="cursor-pointer font-bold select-none h-11 text-xs">
+                      {lang === "th" ? "แบบสำรวจ" : "Survey"} <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
+                    </TableHead>
+                    <TableHead onClick={() => toggleSort("dept")} className="cursor-pointer font-bold select-none h-11 text-xs">
+                      {lang === "th" ? "ฝ่าย" : "Department"} <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
+                    </TableHead>
+                    <TableHead onClick={() => toggleSort("completed_at")} className="cursor-pointer font-bold select-none h-11 text-xs">
+                      {lang === "th" ? "วันที่เสร็จสิ้น" : "Completed At"} <ArrowUpDown className="w-3 h-3 inline-block ml-1 opacity-70" />
+                    </TableHead>
+                    <TableHead className="font-bold h-11 text-xs text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-40 text-center">
+                        <div className="w-7 h-7 rounded-full border-2 border-slate-100 border-t-primary animate-spin mx-auto mb-2" />
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Loading data…</span>
+                      </TableCell>
+                    </TableRow>
+                  ) : paginatedResponses.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-32 text-center text-slate-400 italic">
+                        No records found matching filters
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedResponses.map((row) => {
+                      const survey = surveys.find((s) => s.id === row.survey_id);
+                      return (
+                        <TableRow key={row.id} className="hover:bg-slate-50/55 dark:hover:bg-slate-800/40">
+                          <TableCell className="font-mono font-bold text-xs max-w-[140px] truncate">
+                            {row.id}
+                          </TableCell>
+                          <TableCell className="font-medium text-xs max-w-[200px] truncate">
+                            {lang === "th" ? (survey?.titleTh ?? "—") : (survey?.titleEn ?? "—")}
+                          </TableCell>
+                          <TableCell className="font-semibold text-xs">
+                            {row.demographics?.department || row.demographics?.dept || "N/A"}
+                          </TableCell>
+                          <TableCell className="text-xs text-slate-450 dark:text-slate-400 font-medium">
+                            {row.completed_at ? new Date(row.completed_at).toLocaleString() : "N/A"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDetail(row)}
+                              className="h-8 rounded-lg text-xs font-bold gap-1.5"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-primary" />
+                              {lang === "th" ? "รายละเอียด" : "Drill Down"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Table Pagination */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/10">
+                <div className="text-xs font-medium text-slate-400">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage((c) => Math.max(1, c - 1))}
+                    disabled={currentPage === 1}
+                    className="h-8 w-8 rounded-lg"
+                  >
+                    <ChevronRight className="w-4 h-4 rotate-180" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage((c) => Math.min(totalPages, c + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-8 w-8 rounded-lg"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* ── Drill-down Detail Modal ── */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>

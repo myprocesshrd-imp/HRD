@@ -74,7 +74,7 @@ function emptyForm(type: QuestionType = "rating"): QuestionForm {
   return {
     textEn: "", textTh: "", descEn: "", descTh: "",
     type, required: true, category: "",
-    minValue: 1, maxValue: 5,
+    minValue: 1, maxValue: 6,
     choices: [{ key: `c${Date.now()}`, value: "1", labelEn: "Excellent", labelTh: "ดีเยี่ยม" }],
     rows: [{ key: `r${Date.now()}`, textEn: "Criteria 1", textTh: "เกณฑ์ที่ 1" }],
     columns: [{ key: `c${Date.now()}`, value: "1", labelEn: "1", labelTh: "1" }],
@@ -87,7 +87,7 @@ function formFromQuestion(q: Question): QuestionForm {
     descEn: q.descEn ?? "", descTh: q.descTh ?? "",
     type: q.type, required: q.required ?? true,
     category: q.category ?? "",
-    minValue: q.minValue ?? 1, maxValue: q.maxValue ?? 5,
+    minValue: q.minValue ?? 1, maxValue: q.maxValue ?? 6,
     choices: (q.choices ?? []).map((c, i) => ({ key: `c${i}${Date.now()}`, ...c })),
     rows: (q.rows ?? []).map((r, i) => ({ key: `r${i}${Date.now()}`, ...r })),
     columns: (q.columns ?? []).map((c, i) => ({ key: `c${i}${Date.now()}`, ...c })),
