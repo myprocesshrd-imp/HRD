@@ -38,7 +38,7 @@ const DEMO_COLS = [
 
 // ─── Heat colour for numeric scores ──────────────────────────────────────────
 
-function getRatingColor(val: number, max: number = 5): string {
+function getRatingColor(val: number, max: number = 6): string {
   const ratio = Math.max(0, Math.min(1, (val - 1) / (max - 1)));
   // Green (4E/A35) → Yellow (EAB308) → Red (EF4444)
   if (ratio >= 0.66)
@@ -358,7 +358,7 @@ export function SpreadsheetView({
                     isEven
                       ? "bg-white dark:bg-slate-900"
                       : "bg-slate-50 dark:bg-slate-950",
-                    "hover:bg-primary/5 dark:hover:bg-primary/10"
+                    "hover:bg-primary-soft"
                   )}
                   onClick={() => onRowClick(r)}
                 >
@@ -368,7 +368,7 @@ export function SpreadsheetView({
                     className={cn(
                       "border-r border-slate-100 dark:border-slate-800 px-3 overflow-hidden",
                       isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-slate-950",
-                      "group-hover:bg-primary/5 dark:group-hover:bg-primary/10"
+                      "group-hover:bg-primary-soft"
                     )}
                   >
                     <div className="flex flex-col gap-px">
@@ -391,7 +391,7 @@ export function SpreadsheetView({
                         className={cn(
                           "border-r border-slate-100 dark:border-slate-800 px-3 overflow-hidden",
                           isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-slate-950",
-                          "group-hover:bg-primary/5 dark:group-hover:bg-primary/10"
+                          "group-hover:bg-primary-soft"
                         )}
                       >
                         <span
