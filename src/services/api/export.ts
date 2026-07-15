@@ -15,6 +15,8 @@ export interface ExportQuestion {
   sectionTitleEn: string;
   sectionTitleTh: string;
   choices?: { value: string; labelEn: string; labelTh: string }[];
+  type?: string;
+  maxValue?: number;
 }
 
 export interface ExportFilters {

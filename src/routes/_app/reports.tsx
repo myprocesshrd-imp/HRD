@@ -180,6 +180,8 @@ function ReportsPage() {
               choices: q.choices,
               sectionTitleEn: sec.titleEn,
               sectionTitleTh: sec.titleTh,
+              type: q.type,
+              maxValue: q.maxValue,
             });
           }
         });
@@ -718,7 +720,7 @@ function ReportsPage() {
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Submission Metadata</h4>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Completed At</span>
-                    <span className="font-semibold">{selectedResponse?.completed_at ? new Date(selectedResponse.completed_at).toLocaleDateString() : "N/A"}</span>
+                    <span className="font-semibold">{selectedResponse?.completed_at ? new Date(selectedResponse.completed_at).toLocaleString() : "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Time spent</span>
@@ -751,7 +753,7 @@ function ReportsPage() {
                                         Score: {ans.numeric_value}
                                       </Badge>
                                       <span className="text-xs text-slate-400 font-semibold">
-                                        (out of 5)
+                                        (out of {ans.question?.max_value ?? 5})
                                       </span>
                                     </div>
                                   ) : (

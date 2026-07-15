@@ -59,20 +59,23 @@ function getNpsColor(val: number): string {
 function AnswerCell({
   ans,
   highlight,
+  question,
 }: {
   ans: any;
   highlight: boolean;
+  question?: ExportQuestion;
 }) {
   if (!ans)
     return (
       <span className="text-slate-300 dark:text-slate-700 select-none">—</span>
     );
 
-  // NPS (0-10)
+  // NPS or Rating
   if (ans.numeric_value !== null && ans.numeric_value !== undefined) {
     const v = Number(ans.numeric_value);
-    const isNps = v > 5; // heuristic: NPS values go 0-10
-    const colorCls = isNps ? getNpsColor(v) : getRatingColor(v);
+    const isNps = question?.type === "nps" || (!question?.type && v > 6);
+    const maxVal = question?.maxValue ?? (isNps ? 10 : 5);
+    const colorCls = isNps ? getNpsColor(v) : getRatingColor(v, maxVal);
     return (
       <span
         className={cn(
@@ -421,7 +424,7 @@ export function SpreadsheetView({
                         className="border-r border-slate-100 dark:border-slate-800 px-2 overflow-hidden"
                       >
                         <div className="flex items-center justify-center h-full">
-                          <AnswerCell ans={ans} highlight={hl} />
+                          <AnswerCell ans={ans} highlight={hl} question={q} />
                         </div>
                       </td>
                     );

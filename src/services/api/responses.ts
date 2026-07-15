@@ -128,6 +128,7 @@ export interface DetailAnswer {
     text_en: string;
     text_th: string;
     type: string;
+    max_value: number | null;
     section: { title_en: string; title_th: string } | null;
   } | null;
 }
@@ -154,7 +155,7 @@ export async function getResponseDetail(responseId: string): Promise<{
           array_text_value,
           jsonb_value,
           question:questions(
-            id, text_en, text_th, type,
+            id, text_en, text_th, type, max_value,
             section:sections(title_en, title_th)
           )
         `)
