@@ -57,6 +57,7 @@ import {
   Quote,
   CheckCircle2,
   Building2,
+  Building,
   CalendarDays,
   MessageSquareHeart,
   Lightbulb,
@@ -834,6 +835,57 @@ async function fetchDepartmentParticipation(filters: {
     .sort((a, b) => b.count - a.count);
 }
 
+// ── Business unit participation (overall, distinct respondents) ───────────────
+interface BUParticipation {
+  bu: string;
+  count: number;
+}
+
+async function fetchBusinessUnitParticipation(filters: {
+  surveyId: string;
+  dept: string;
+  bu: string;
+  ageRange: string;
+  tenure: string;
+  gender: string;
+  location: string;
+  level: string;
+  startDate: string;
+  endDate: string;
+}): Promise<BUParticipation[]> {
+  if (!supabaseAdmin) return [];
+  let q = supabaseAdmin
+    .from("survey_responses")
+    .select("id, demographics")
+    .eq("status", "completed");
+
+  if (filters.surveyId !== "all") q = q.eq("survey_id", filters.surveyId);
+  if (filters.dept !== "all") q = q.eq("demographics->>department", filters.dept);
+  if (filters.bu !== "all") q = q.eq("demographics->>businessUnit", filters.bu);
+  if (filters.ageRange !== "all") q = q.eq("demographics->>ageRange", filters.ageRange);
+  if (filters.tenure !== "all") q = q.eq("demographics->>tenure", filters.tenure);
+  if (filters.gender !== "all") q = q.eq("demographics->>gender", filters.gender);
+  if (filters.location !== "all") q = q.eq("demographics->>location", filters.location);
+  if (filters.level !== "all") q = q.eq("demographics->>level", filters.level);
+  if (filters.startDate) q = q.gte("created_at", filters.startDate);
+  if (filters.endDate) q = q.lte("created_at", filters.endDate + "T23:59:59");
+
+  const { data, error } = await q;
+  if (error) {
+    console.error("BU participation fetch error:", error);
+    return [];
+  }
+  const counts = new Map<string, number>();
+  for (const row of data || []) {
+    const dem = (row.demographics as Record<string, string>) || {};
+    const bu = dem.businessUnit || "—";
+    counts.set(bu, (counts.get(bu) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([bu, count]) => ({ bu, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 function DepartmentParticipationChart({
   data,
   loading,
@@ -843,11 +895,12 @@ function DepartmentParticipationChart({
   loading: boolean;
   lang: "th" | "en";
 }) {
-  const { t } = useI18n();
   const chartData = data.map((d) => ({
     name: d.dept,
     count: d.count,
   }));
+  // Horizontal bars: chart grows with rows; kept scrollable inside fixed-height card.
+  const chartHeight = Math.max(260, chartData.length * 34 + 20);
 
   return (
     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
@@ -856,10 +909,10 @@ function DepartmentParticipationChart({
           <Building2 className="w-4 h-4 text-sky-600" />
           <div>
             <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
-              {lang === "th" ? "การมีส่วนร่วมรายแผนก (ภาพรวม)" : "Department Participation (Overall)"}
+              {lang === "th" ? "การมีส่วนร่วมรายฝ่าย (ภาพรวม)" : "Department Participation (Overall)"}
             </CardTitle>
             <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              {lang === "th" ? "จำนวนผู้ตอบแบบสำรวจแยกตามแผนก" : "Distinct respondents per department"}
+              {lang === "th" ? "จำนวนผู้ตอบแบบสำรวจแยกตามฝ่าย" : "Distinct respondents per department"}
             </CardDescription>
           </div>
         </div>
@@ -874,8 +927,88 @@ function DepartmentParticipationChart({
             {lang === "th" ? "ไม่มีข้อมูล" : "No data"}
           </div>
         ) : (
+          <div className="h-full overflow-y-auto pr-1.5 -mr-1.5">
+            <ResponsiveContainer width="100%" height={chartHeight}>
+              <BarChart
+                layout="vertical"
+                data={chartData}
+                margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#e2e8f0" className="dark:opacity-10" />
+                <XAxis
+                  type="number"
+                  stroke="#94a3b8"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 9, fontWeight: 700 }}
+                  allowDecimals={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  stroke="#94a3b8"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 9, fontWeight: 700 }}
+                  width={120}
+                  interval={0}
+                />
+                <Tooltip
+                  contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12, fontSize: 11, color: "#f1f5f9" }}
+                  itemStyle={{ color: "#e2e8f0", fontWeight: 700, fontSize: 11 }}
+                  formatter={(value: number) => [`${value} ${lang === "th" ? "คน" : "people"}`, lang === "th" ? "ผู้ตอบ" : "Respondents"]}
+                />
+                <Bar dataKey="count" name={lang === "th" ? "ผู้ตอบ" : "Respondents"} fill="#0ea5e9" radius={[0, 4, 4, 0]} maxBarSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BusinessUnitParticipationChart({
+  data,
+  loading,
+  lang,
+}: {
+  data: BUParticipation[];
+  loading: boolean;
+  lang: "th" | "en";
+}) {
+  const chartData = data.map((d) => ({
+    name: d.bu,
+    count: d.count,
+  }));
+
+  return (
+    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
+      <CardHeader className="px-6 py-4 border-b dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+        <div className="flex items-center gap-2.5">
+          <Building className="w-4 h-4 text-violet-600" />
+          <div>
+            <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">
+              {lang === "th" ? "การมีส่วนร่วมรายหน่วยงานสังกัด (ภาพรวม)" : "Business Unit Participation (Overall)"}
+            </CardTitle>
+            <CardDescription className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              {lang === "th" ? "จำนวนผู้ตอบแบบสำรวจแยกตามหน่วยงานสังกัด" : "Distinct respondents per business unit"}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-5 pt-2 h-[320px]">
+        {loading ? (
+          <div className="flex h-full items-center justify-center text-slate-400">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-violet-500" />
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-xs font-semibold text-slate-400">
+            {lang === "th" ? "ไม่มีข้อมูล" : "No data"}
+          </div>
+        ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 50 }}>
+            <BarChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" className="dark:opacity-10" />
               <XAxis
                 dataKey="name"
@@ -884,9 +1017,9 @@ function DepartmentParticipationChart({
                 axisLine={false}
                 tick={{ fontSize: 9, fontWeight: 700 }}
                 interval={0}
-                angle={-35}
+                angle={-20}
                 textAnchor="end"
-                height={60}
+                height={28}
               />
               <YAxis stroke="#94a3b8" fontSize={9} fontWeight={700} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip
@@ -894,7 +1027,7 @@ function DepartmentParticipationChart({
                 itemStyle={{ color: "#e2e8f0", fontWeight: 700, fontSize: 11 }}
                 formatter={(value: number) => [`${value} ${lang === "th" ? "คน" : "people"}`, lang === "th" ? "ผู้ตอบ" : "Respondents"]}
               />
-              <Bar dataKey="count" name={lang === "th" ? "ผู้ตอบ" : "Respondents"} fill="#0ea5e9" radius={[4, 4, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="count" name={lang === "th" ? "ผู้ตอบ" : "Respondents"} fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -1373,6 +1506,7 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<EmployeeFeedback[]>([]);
   const [deptParticipation, setDeptParticipation] = useState<DeptParticipation[]>([]);
+  const [buParticipation, setBuParticipation] = useState<BUParticipation[]>([]);
 
   // Load lookups once
   useEffect(() => {
@@ -1448,6 +1582,21 @@ function AdminDashboard() {
       })
         .then(setDeptParticipation)
         .catch((e) => console.error("Dept participation load error:", e));
+      // Load overall business unit participation (distinct respondents per BU).
+      fetchBusinessUnitParticipation({
+        surveyId: selectedSurvey,
+        dept: selectedDept,
+        bu: selectedBU,
+        ageRange: selectedAge,
+        tenure: selectedTenure,
+        gender: selectedGender,
+        location: selectedLocation,
+        level: selectedLevel,
+        startDate,
+        endDate,
+      })
+        .then(setBuParticipation)
+        .catch((e) => console.error("BU participation load error:", e));
     } catch (e) {
       console.error("Dashboard load error:", e);
     } finally {
@@ -1885,12 +2034,19 @@ function AdminDashboard() {
             </Card>
           </div>
 
-          {/* ── Department Participation (Overall) ── */}
-          <DepartmentParticipationChart
-            data={deptParticipation}
-            loading={loading}
-            lang={lang as "th" | "en"}
-          />
+          {/* ── Participation (Overall): Business Unit + Department ── */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <BusinessUnitParticipationChart
+              data={buParticipation}
+              loading={loading}
+              lang={lang as "th" | "en"}
+            />
+            <DepartmentParticipationChart
+              data={deptParticipation}
+              loading={loading}
+              lang={lang as "th" | "en"}
+            />
+          </div>
 
           {/* ── Row 2: Expanded Strengths & Areas for Improvement (Theme background) ── */}
           <Card className="rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/60">
