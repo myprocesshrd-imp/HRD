@@ -85,10 +85,10 @@ function PostCard({ post, lang }: { post: BulletinPost; lang: "th" | "en" }) {
           </div>
         )}
 
-        <CardContent className="p-5 flex-1 flex flex-col justify-between">
-          <div className="space-y-3">
+        <CardContent className="p-5 flex-1 min-h-0 flex flex-col">
+          <div className="space-y-3 min-h-0 flex-1 flex flex-col">
             {/* Header */}
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Pinned badge (no image) */}
                 {post.isPinned && !post.imageUrl && (
@@ -110,13 +110,13 @@ function PostCard({ post, lang }: { post: BulletinPost; lang: "th" | "en" }) {
             </div>
 
             {/* Title */}
-            <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-snug line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+            <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-snug line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors shrink-0">
               {title}
             </h3>
 
             {/* Content */}
             <p className={cn(
-              "text-xs text-slate-500 dark:text-slate-400 leading-relaxed",
+              "text-xs text-slate-500 dark:text-slate-400 leading-relaxed min-h-0 flex-1",
               post.imageUrl ? "line-clamp-2" : "line-clamp-5"
             )}>
               {content}
